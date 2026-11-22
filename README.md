@@ -4,28 +4,34 @@ A local-first Chrome extension (Manifest V3) that reduces repetitive job-applica
 
 ## What it does
 - Stores your profile, multiple resumes/cover letters and reusable answers **on your device only**.
-- Detects fields on a job application form when you ask.
+- Detects supported form fields after an explicit user action.
 - Proposes values with confidence and evidence; **you approve** before anything is filled.
-- Never submits the form and never touches sensitive fields (passwords, OTPs, payment, work-authorization declarations).
+- Preserves existing page values unless you explicitly approve replacement.
+- Never submits forms and excludes sensitive fields from the detection/fill workflow.
 
 ## Status
-M5 — Mapping review and guarded autofill integration. Profile, local document library, form detection, deterministic mapping, per-field review/approval, and guarded filling are implemented in the current development branch; see [the roadmap](docs/roadmap.md).
+M5 — Mapping review and guarded autofill integration is implemented. This hardening slice improves message safety, duplicate-listener protection, phone-number mapping and deterministic CI installs. Radio/checkbox groups, backup restore hardening, browser E2E and real Chrome compatibility checks remain open. See [the roadmap](docs/roadmap.md).
 
 ## Stack
-WXT, React, TypeScript, Tailwind CSS, chrome.storage.local, IndexedDB, Vitest, Playwright.
+WXT, React, TypeScript, Tailwind CSS, chrome.storage.local, IndexedDB and Vitest.
 
 ## Getting started
 **Requirements:** Node.js 22 or newer and npm.
 
 ```bash
-npm install
+npm ci
 npm run dev
 ```
 
-WXT starts the development build and prints the extension output directory. In Chrome, open `chrome://extensions`, enable **Developer mode**, choose **Load unpacked**, and select the generated `.output/chrome-mv3` directory. Keep the dev process running while developing.
+Load the generated `.output/chrome-mv3` directory as an unpacked extension from `chrome://extensions` with Developer mode enabled.
 
-Useful commands:
+## Local fixture smoke test
+```bash
+python -m http.server 4173 --directory tests/fixtures/local-page
+```
+Open `http://localhost:4173`, open the CareerPilot side panel, and select **Detect fields on active tab**. CareerPilot checks local website rules and uses Chrome's temporary `activeTab` access for explicit injection. Use synthetic data only; this fixture does not establish compatibility with third-party job portals.
 
+## Useful commands
 | Command | Purpose |
 |---|---|
 | `npm run dev` | Start WXT development mode |
@@ -34,21 +40,6 @@ Useful commands:
 | `npm run lint` | Run ESLint |
 | `npm run typecheck` | Run TypeScript checks |
 | `npm test` | Run Vitest once |
-| `npm run test:watch` | Run Vitest in watch mode |
-
-The M1 content-script messaging smoke test is deliberately restricted to `http://localhost/*` and `http://127.0.0.1/*`. It is not yet enabled on job sites. To test it, serve the fixture in a second terminal with `python -m http.server 4173 --directory tests/fixtures/local-page`, open `http://localhost:4173`, open the CareerPilot side panel, and select **Ping active local page**. Do not add broad host permissions as a shortcut; revisit permission scope alongside the user-initiated detection workflow in M3.
 
 ## Documentation
-| Doc | Purpose |
-|---|---|
-| [Product requirements](docs/product-requirements.md) | Scope, FRs, acceptance criteria |
-| [UX and screens](docs/ux-screens.md) | Screen list, first-run flow, empty/error states |
-| [Design tokens and UI decisions](docs/design-tokens.md) | Colors, type, spacing, UI decisions, mockup link |
-| [Mockups](docs/mockups/README.md) | Exported side-panel screens |
-| [Architecture](docs/architecture.md) | Components, messaging, pipeline |
-| [Data model](docs/data-model.md) | Schemas and persistence |
-| [Security and privacy](docs/security-privacy.md) | Privacy promise, checklist |
-| [Testing strategy](docs/testing-strategy.md) | Unit, fixture and browser tests |
-| [Release process](docs/release-process.md) | CI and Chrome Web Store steps |
-| [Roadmap](docs/roadmap.md) | Milestones M1 to M7 |
-| [ADR 0001](docs/decisions/0001-local-first-mvp.md) | Local-first decision |
+See [product requirements](docs/product-requirements.md), [architecture](docs/architecture.md), [data model](docs/data-model.md), [security and privacy](docs/security-privacy.md), [autofill engine](docs/autofill-engine.md), [testing strategy](docs/testing-strategy.md), [release process](docs/release-process.md) and [roadmap](docs/roadmap.md).
