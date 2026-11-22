@@ -37,8 +37,8 @@ Detect likely application forms; inspect input, textarea, select, radio, checkbo
 **Exit:** fixtures verify metadata and exclusion; no fields are filled yet.
 
 ## M4 — Mapping and option matching
-Profile aliases, evidence/confidence, saved-answer matching, native option matching, manual mapping/edit/approve/skip, conservative ambiguity handling.
-**Exit:** exact, normalized, ambiguous, and no-match cases covered; uncertain suggestions are never silently selected.
+Deterministic explainable matching from detected metadata to standard/custom profile values and saved answers. Return confidence, evidence, alternatives and conservative statuses. Match native select/radio options only when there is one unique enabled option. Ambiguous, weak, and no-match cases require review and are never silently selected.
+**Exit:** exact, normalized, alias, saved-answer, native-option, ambiguous, and no-match cases covered by unit tests. M4 never writes to the page or approves a mapping.
 
 ## M5 — Autofill engine
 Approved text/textarea/select/radio/checkbox filling; controlled-input events; target revalidation; per-field results and verification; partial-failure handling; compare-before-write and conflict handling.
