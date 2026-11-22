@@ -56,6 +56,7 @@ export default function App() {
   const [fillResults, setFillResults] = useState<FillResult[]>([]);
   const [scanning, setScanning] = useState(false);
   const [filling, setFilling] = useState(false);
+  const [scannedTab, setScannedTab] = useState<{ id: number; url: string } | null>(null);
 
   async function refreshLibrary() {
     const [docs, savedAnswers, savedSnippets] = await Promise.all([listDocuments(), listAnswers(), listSnippets()]);
@@ -126,7 +127,7 @@ export default function App() {
     catch (error) { setStatus(error instanceof Error ? error.message : 'Could not save website access rules.'); }
   }
   async function detectCurrentForm() {
-    setScanning(true); setFillResults([]); setApprovedFields({}); setEditedValues({}); setReplaceFields({});
+    setScanning(true); setFillResults([]); setApprovedFields({}); setEditedValues({}); setReplaceFields({}); setScannedTab(null);
     const [activeTab] = await chrome.tabs.query({ active: true, currentWindow: true });
     if (!activeTab?.id || !activeTab.url) { setStatus('The active tab URL is unavailable.'); setScanning(false); return; }
     const decision = evaluateWebsiteAccess(activeTab.url, accessRules);
@@ -136,6 +137,7 @@ export default function App() {
       const response = await chrome.tabs.sendMessage(activeTab.id, { type: 'DETECT_FORM_FIELDS' });
       if (!response?.ok) { setStatus(response?.error ?? 'Could not inspect this page.'); return; }
       const fields = response.fields as DetectedField[];
+      setScannedTab({ id: activeTab.id, url: activeTab.url });
       setDetectedFields(fields);
       const suggestions = suggestFieldMappings({ fields, profileValues: getProfileCandidateValues(profile), savedAnswers: answers });
       setMappingSuggestions(suggestions);
@@ -149,7 +151,7 @@ export default function App() {
     setFilling(true); setFillResults([]);
     try {
       const [activeTab] = await chrome.tabs.query({ active: true, currentWindow: true });
-      if (!activeTab?.id || !activeTab.url) { setStatus('The active tab is unavailable. Re-scan the page.'); return; }
+      if (!activeTab?.id || !activeTab.url || !scannedTab || activeTab.id !== scannedTab.id || activeTab.url !== scannedTab.url) { setStatus('The active tab changed after scanning. Re-scan before filling.'); return; }
       const decision = evaluateWebsiteAccess(activeTab.url, accessRules);
       if (!decision.allowed) { setStatus(decision.reason); return; }
       const targets: FillTarget[] = selected.map(field => {
@@ -223,7 +225,7 @@ export default function App() {
           <Button className="mb-3 w-full" onClick={() => void detectCurrentForm()}>Detect fields on active tab</Button>
           {scanning && <p className="mb-3 text-xs text-accent" role="status">Scanning active tab…</p>}
           {detectedFields.length > 0 && <div className="mb-4 space-y-3">
-            <div className="flex items-center justify-between"><SectionHeader title="Review field suggestions" count={detectedFields.length} /><button className="text-xs font-semibold text-accent" onClick={() => { setDetectedFields([]); setMappingSuggestions([]); setApprovedFields({}); setFillResults([]); }}>Clear scan</button></div>
+            <div className="flex items-center justify-between"><SectionHeader title="Review field suggestions" count={detectedFields.length} /><button className="text-xs font-semibold text-accent" onClick={() => { setDetectedFields([]); setMappingSuggestions([]); setApprovedFields({}); setFillResults([]); setScannedTab(null); }}>Clear scan</button></div>
             <p className="text-xs leading-5 text-text-secondary">Review and edit each value. Only individually approved fields are sent to the page. Existing values are preserved unless replacement is explicitly enabled.</p>
             {detectedFields.map(field => {
               const suggestion = mappingSuggestions.find(item => item.detectedFieldId === field.id);
