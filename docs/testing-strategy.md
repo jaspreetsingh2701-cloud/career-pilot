@@ -35,6 +35,16 @@ Verify detection, matching, option selection, filling, document management, and 
 - Disabled, hidden, and read-only fields never receive suggestions.
 - Mapping is pure and does not mutate detected fields, profile values, saved answers, or the page.
 
+## M5 autofill engine tests
+- Approved empty text inputs fill and dispatch bubbling input/change events.
+- Unapproved fields remain untouched.
+- Existing different values remain unchanged unless that individual field has explicit replace approval.
+- Matching values are reported as already filled.
+- Stale target identity is rejected after page changes.
+- Sensitive and unsupported controls are excluded.
+- Native selects accept only an existing enabled option.
+- Verify no form submission event is triggered.
+
 ## Local fixture application
 Create realistic fixtures for:
 1. Basic HTML form.
