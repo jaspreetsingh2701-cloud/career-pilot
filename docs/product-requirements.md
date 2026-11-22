@@ -23,6 +23,10 @@ Job seekers repeatedly enter contact, experience, compensation, availability, an
 - Support education entries, employment history entries, skills, languages, and job preferences (preferred role, work mode, willingness to relocate, notice-period negotiability).
 - Store phone with country code; keep user-entered wording for compensation and notice period.
 - Keep optional values optional; never fabricate missing information.
+- Allow custom profile fields with a user-defined label, value type, value, optional section/description, and explicit matching aliases.
+- Keep built-in profile field definitions in a typed TypeScript catalogue; store user-created fields with the local profile.
+- Normalize built-in and custom profile values into the same candidate-source shape for future mapping; custom fields remain suggestions and require user approval.
+- Custom profile fields are included in local backup/restore and remain compatible with older backups that do not contain them.
 
 ### FR-02 Document library
 - Import and store multiple resumes and cover letters locally.
@@ -36,6 +40,7 @@ Job seekers repeatedly enter contact, experience, compensation, availability, an
 - Create, edit, and delete reusable answers to common application questions.
 - Associate answers with keywords/categories.
 - Treat answers as suggestions; allow review/edit per application.
+- Allow copying saved answers as plain text, with visible success or manual-copy fallback feedback.
 - Never invent personal history, eligibility, or legal declarations.
 
 ### FR-04 Form detection and metadata
@@ -136,6 +141,10 @@ AI answer generation, JD analysis/resume scoring, cloud accounts/sync, backend, 
 10. First-run onboarding completes with only name and email provided.
 11. Pre-filled fields are never overwritten without per-field opt-in; changed or filled fields are skipped and reported.
 12. A snippet copied from CareerPilot pastes into LinkedIn and a plain-text editor with identical line breaks and blank lines; placeholders are replaced and unfilled ones are flagged before copying.
+13. Custom profile fields persist across reloads and backup/restore, and are exposed alongside standard profile values through a shared candidate-value adapter.
+14. Resume and cover-letter imports preserve the selected document type; each type can have its own independent default.
+15. Upload, save, copy, and validation actions provide visible, accessible status feedback; profile save state distinguishes saving, saved, and unsaved changes.
+16. Saved answers can be copied, edited, and deleted.
 
 ## Confirmed decisions
 CareerPilot name; Chrome Manifest V3; local-only MVP; no AI/backend/cloud; multiple documents; metadata-aware detection and option matching; user approval; no auto-submit.
