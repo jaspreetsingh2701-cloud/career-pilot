@@ -41,8 +41,8 @@ Deterministic explainable matching from detected metadata to standard/custom pro
 **Exit:** exact, normalized, alias, saved-answer, native-option, ambiguous, and no-match cases covered by unit tests. M4 never writes to the page or approves a mapping.
 
 ## M5 — Autofill engine
-Approved text/textarea/select/radio/checkbox filling; controlled-input events; target revalidation; per-field results and verification; partial-failure handling; compare-before-write and conflict handling.
-**Exit:** fixtures fill approved fields only; excluded fields stay untouched; no submission occurs.
+Approved text/textarea/select/radio/checkbox filling; controlled-input events; target revalidation; per-field results and verification; partial-failure handling; compare-before-write and conflict handling. The first implementation slice adds a guarded content-side fill primitive and typed message contract; the side-panel review/approval UI and fixture integration remain required before M5 exit.
+**Exit:** side-panel review/approve/edit/skip flow is wired to the content handler; fixtures fill approved fields only; excluded fields stay untouched; stale and conflict cases are reported; no submission occurs.
 
 ## M6 — Document upload
 Detect file inputs; match context/accepted types; select library document; explicit approval; attempt assignment; verify and provide manual fallback.
