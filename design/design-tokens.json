@@ -1,0 +1,59 @@
+{
+  "brand": {
+    "primary": {
+      "50": "#EEF2FF",
+      "100": "#E0E7FF",
+      "600": "#4F46E5",
+      "700": "#4338CA"
+    },
+    "accent": {
+      "50": "#F0FDFA",
+      "500": "#14B8A6",
+      "700": "#0F766E"
+    }
+  },
+  "neutral": {
+    "0": "#FFFFFF",
+    "50": "#F8FAFC",
+    "100": "#F1F5F9",
+    "200": "#E2E8F0",
+    "500": "#64748B",
+    "700": "#334155",
+    "900": "#0F172A"
+  },
+  "semantic": {
+    "success": "#16A34A",
+    "warning": "#D97706",
+    "danger": "#DC2626",
+    "info": "#0284C7"
+  },
+  "typography": {
+    "fontFamily": "Inter, ui-sans-serif, system-ui, sans-serif",
+    "weights": {
+      "regular": 400,
+      "medium": 500,
+      "semibold": 600
+    },
+    "sizes": {
+      "helper": "12px",
+      "body": "14px"
+    }
+  },
+  "spacing": {
+    "base": "4px",
+    "scale": ["4px", "8px", "12px", "16px", "24px", "32px"]
+  },
+  "radius": {
+    "control": "6px",
+    "default": "8px",
+    "large": "12px"
+  },
+  "motion": {
+    "duration": "120ms 200ms",
+    "reducedMotion": true
+  },
+  "theme": {
+    "default": "light",
+    "darkMode": "future"
+  }
+}
