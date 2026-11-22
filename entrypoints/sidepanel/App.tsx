@@ -145,6 +145,39 @@ export default function App() {
             <label className={labelClass}>Theme<select className={inputClass} value={theme} onChange={e => void updateTheme(e.target.value as ThemePreference)}><option value="system">System (default)</option><option value="light">Light</option><option value="dark">Dark</option></select></label>
           </div>
           <div className="rounded-card border border-border bg-card p-card">
+            <SectionHeader title="Backup and restore" />
+            <p className="mt-2 text-xs leading-5 text-text-secondary">Export your profile, documents, saved answers and snippets to a versioned local file.</p>
+            <Button className="mt-3 w-full" variant="secondary" onClick={async () => {
+              try {
+                const blob = await createBackup();
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = 'careerpilot-backup.json';
+                link.click();
+                URL.revokeObjectURL(url);
+                setStatus('Backup exported.');
+              } catch (error) {
+                setStatus(error instanceof Error ? error.message : 'Backup export failed.');
+              }
+            }}>Export backup</Button>
+            <label className={`${labelClass} mt-3`}>Restore backup
+              <input className="mt-2 block w-full text-xs" type="file" accept="application/json,.json" onChange={async e => {
+                const file = e.target.files?.[0];
+                if (!file || !window.confirm('Restore this backup? Current CareerPilot data will be replaced.')) return;
+                try {
+                  await restoreBackup(file);
+                  setProfile(await getProfile());
+                  await refreshLibrary();
+                  setStatus('Backup restored successfully.');
+                } catch (error) {
+                  setStatus(error instanceof Error ? error.message : 'Backup restore failed.');
+                }
+                e.target.value = '';
+              }} />
+            </label>
+          </div>
+          <div className="rounded-card border border-border bg-card p-card">
             <SectionHeader title="Your data and privacy" />
             <p className="mt-2 text-xs leading-5 text-text-secondary">Your profile, documents, saved answers, snippets and appearance preference are stored locally in this browser. CareerPilot has no account, cloud sync or backend.</p>
             <Banner className="mt-3">Clear local data permanently deletes your profile, document library, saved answers and snippets from this browser.</Banner>
