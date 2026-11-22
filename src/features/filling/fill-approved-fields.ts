@@ -33,7 +33,8 @@ export function fillApprovedFields(root: ParentNode, targets: FillTarget[]): Fil
   return targets.map(target => {
     if (!target.approved) return { fieldId: target.fieldId, status: 'not-approved', message: 'This field was not approved.' };
     const el = elements[target.index];
-    if (!el || el.tagName.toLowerCase() !== target.tagName ||
+    const liveControlType = el instanceof HTMLInputElement ? el.type.toLowerCase() : el?.tagName.toLowerCase();
+    if (!el || el.tagName.toLowerCase() !== target.tagName || liveControlType !== target.controlType ||
       (target.elementId && el.id !== target.elementId) || (target.name && el.name !== target.name)) {
       return { fieldId: target.fieldId, status: 'stale', message: 'The field changed after scanning. Re-scan before filling.' };
     }
