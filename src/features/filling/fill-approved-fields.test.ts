@@ -52,4 +52,18 @@ describe('fillApprovedFields', () => {
     document.body.innerHTML = '<input id="other" name="other"><input id="email" name="email">';
     expect(fillApprovedFields(document, [target()])[0].status).toBe('stale');
   });
+  it('does not submit a form while filling approved fields', () => {
+    document.body.innerHTML = '<form><input id="email" name="email"></form>';
+    let submits = 0;
+    document.querySelector('form')!.addEventListener('submit', event => { event.preventDefault(); submits++; });
+    expect(fillApprovedFields(document, [target()])[0].status).toBe('filled');
+    expect(submits).toBe(0);
+  });
+  it('requires explicit per-field replacement approval', () => {
+    document.body.innerHTML = '<input id="email" name="email" value="site@example.com"><input id="other" name="other" value="keep">';
+    const first = fillApprovedFields(document, [target({ replaceExisting: true })])[0];
+    expect(first.status).toBe('filled');
+    expect((document.querySelector('#other') as HTMLInputElement).value).toBe('keep');
+  });
+
 });
