@@ -9,6 +9,7 @@ import { addDocument, clearLibrary, deleteAnswer, deleteDocument, deleteSnippet,
 import type { CareerDocument, DocumentType, MessageSnippet, SavedAnswer } from '../../src/features/library/types';
 import { createBackup, restoreBackup } from '../../src/features/backup/backup';
 import { getThemePreference, saveThemePreference, type ThemePreference } from '../../src/features/settings/theme';
+import { writePlainText } from '../../src/features/library/clipboard';
 
 type Tab = 'documents' | 'profile' | 'answers' | 'settings';
 const inputClass = 'mt-1 min-h-11 w-full rounded-control border border-border-input bg-card px-3 text-sm text-text-primary placeholder:text-text-secondary';
@@ -87,7 +88,7 @@ export default function App() {
     setAnswerTitle(''); setAnswerBody(''); setAnswerEditingId(null); await refreshLibrary(); setStatus(existing ? 'Saved answer updated.' : 'Saved answer added.');
   }
   async function copyText(value: string, label: string) {
-    try { await navigator.clipboard.writeText(value); setClipboardFallback(''); setStatus(`${label} copied to clipboard.`); }
+    try { await writePlainText(value, navigator.clipboard); setClipboardFallback(''); setStatus(`${label} copied to clipboard.`); }
     catch { setClipboardFallback(value); setStatus('Clipboard access was blocked. Click the text below to select it, then copy manually.'); }
   }
   function addCustomField() {
