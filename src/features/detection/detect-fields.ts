@@ -1,11 +1,13 @@
 export interface DetectedOption { label:string; value:string; selected:boolean; disabled:boolean; }
 export interface DetectedField { id:string; index:number; tagName:string; controlType:string; name?:string; elementId?:string; label:string; placeholder?:string; accessibleDescription?:string; helperText?:string; exampleText?:string; currentValue:string; required:boolean; disabled:boolean; readOnly:boolean; hidden:boolean; options?:DetectedOption[]; }
-const EXCLUDED=new Set(["hidden","password","submit","button","reset","image"]);\nconst SENSITIVE=/password|one.?time|otp|verification.?code|security.?code|credit.?card|card.?number|cvv|cvc|bank|routing|ssn|social.?security|passport|national.?id|work.?authorization|gender|ethnicity|race|disability|veteran|consent|attest/i;
+const EXCLUDED=new Set(["hidden","password","submit","button","reset","image"]);
+const SENSITIVE=/password|one.?time|otp|verification.?code|security.?code|credit.?card|card.?number|cvv|cvc|bank|routing|ssn|social.?security|passport|national.?id|work.?authorization|gender|ethnicity|race|disability|veteran|consent|attest/i;
 function described(root:ParentNode,ids:string|null):string { if(!ids)return ""; return ids.split(/\s+/).map(id=>root.querySelector<HTMLElement>("#"+CSS.escape(id))?.innerText??"").filter(Boolean).join(" ").trim(); }
 export function detectApplicationFields(root:ParentNode=document):DetectedField[] {
  return Array.from(root.querySelectorAll<HTMLInputElement|HTMLTextAreaElement|HTMLSelectElement>("input,textarea,select")).flatMap((el,index)=>{
   const type=el instanceof HTMLInputElement?el.type.toLowerCase():el.tagName.toLowerCase();
-  if(EXCLUDED.has(type)||el.disabled||("readOnly" in el && el.readOnly)||el.getAttribute("aria-hidden")==="true")return [];
+  const identity=[el.name,el.id,el.getAttribute("autocomplete"),el.getAttribute("aria-label"),el.getAttribute("placeholder"),el.labels?Array.from(el.labels).map(x=>x.innerText).join(" "):""].filter(Boolean).join(" ");
+  if(SENSITIVE.test(identity)||EXCLUDED.has(type)||el.disabled||("readOnly" in el && el.readOnly)||el.getAttribute("aria-hidden")==="true")return [];
   const style=window.getComputedStyle(el); const hidden=el.hidden||style.display==="none"||style.visibility==="hidden"; if(hidden)return [];
   const label=(el.labels?Array.from(el.labels).map(x=>x.innerText).join(" "):"")||el.getAttribute("aria-label")||el.getAttribute("title")||"";
   const options=el instanceof HTMLSelectElement?Array.from(el.options).map(o=>({label:o.label.trim(),value:o.value,selected:o.selected,disabled:o.disabled})):undefined;
