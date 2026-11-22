@@ -36,7 +36,7 @@ Useful commands:
 | `npm test` | Run Vitest once |
 | `npm run test:watch` | Run Vitest in watch mode |
 
-The M1 content-script messaging smoke test is deliberately restricted to `http://localhost/*` and `http://127.0.0.1/*`. It is not yet enabled on job sites. Do not add broad host permissions as a shortcut; revisit permission scope alongside the user-initiated detection workflow in M3.
+The M1 content-script messaging smoke test is deliberately restricted to `http://localhost/*` and `http://127.0.0.1/*`. It is not yet enabled on job sites. To test it, serve the fixture in a second terminal with `python -m http.server 4173 --directory tests/fixtures/local-page`, open `http://localhost:4173`, open the CareerPilot side panel, and select **Ping active local page**. Do not add broad host permissions as a shortcut; revisit permission scope alongside the user-initiated detection workflow in M3.
 
 ## Documentation
 | Doc | Purpose |
