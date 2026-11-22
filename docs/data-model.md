@@ -13,6 +13,8 @@
 
 ## Candidate profile
 ```ts
+interface CustomProfileField { id: string; key: string; label: string; value: string; type: 'text' | 'number' | 'date' | 'url' | 'textarea'; section?: string; aliases: string[]; description?: string; }
+
 interface UserProfile {
   id: string;
   firstName: string;
@@ -39,6 +41,7 @@ interface UserProfile {
   linkedinUrl?: string;
   githubUrl?: string;
   portfolioUrl?: string;
+  customFields?: CustomProfileField[]; // optional for backwards compatibility
   updatedAt: number;
 }
 ```
@@ -46,7 +49,7 @@ interface UserProfile {
 interface EducationEntry { institution: string; degree?: string; field?: string; startYear?: number; endYear?: number; }
 interface EmploymentEntry { company: string; title: string; startDate?: string; endDate?: string; current?: boolean; summary?: string; }
 ```
-Keep optional values optional. Preserve user-entered units and wording for compensation and notice period; do not infer missing values.
+Keep optional values optional. Preserve user-entered units and wording for compensation and notice period; do not infer missing values. Built-in field labels/aliases live in `src/features/profile/schema/standard-fields.ts`; UI-created fields are stored in `customFields`. `src/features/profile/utils/profile-field-mapper.ts` normalizes both sources for matching. Missing `customFields` in older profiles means an empty list.
 
 ## Documents
 ```ts
