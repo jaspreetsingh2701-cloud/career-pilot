@@ -45,6 +45,7 @@ describe('fillApprovedFields', () => {
   it('selects only an existing enabled native option', () => {
     document.body.innerHTML = '<select id="email" name="email"><option value="">Choose</option><option value="yes">Yes</option><option value="no" disabled>No</option></select>';
     expect(fillApprovedFields(document, [target({ tagName: 'select', controlType: 'select', expectedValue: 'yes' })])[0].status).toBe('filled');
+    (document.querySelector('option[value="no"]') as HTMLOptionElement).disabled = true;
     expect(fillApprovedFields(document, [target({ tagName: 'select', controlType: 'select', expectedValue: 'no' })])[0].status).toBe('unsupported');
   });
   it('does not use an index if the target identity changed', () => {
