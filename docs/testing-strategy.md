@@ -20,7 +20,10 @@ Verify detection, matching, option selection, filling, document management, and 
 - Native option matching, disabled/placeholder options, no-match and multi-match behavior.
 - Input/select/radio/checkbox updates and controlled-framework events.
 - Stale/rerendered targets and partial failures.
-- Profile CRUD and persistence; multiple documents, independent default uniqueness, Blob round-trip, file type/size validation, replacement/deletion, clear-all and migrations.
+- Profile CRUD and persistence; custom field create/remove, alias preservation, older-profile compatibility, standard/custom candidate-value normalization; multiple documents, independent default uniqueness, Blob round-trip, file type/size validation, replacement/deletion, clear-all and migrations.
+- UI regression: selected document type is preserved on import; default resume and default cover letter remain independent.
+- Saved-answer copy preserves exact plain text; edit updates the existing record rather than creating a duplicate.
+- Save/upload/copy success and failure states are announced through the accessible status region; dirty and busy states are accurate.
 - Backup export/restore round-trip for profile, documents, saved answers, snippets and default flags; reject unsupported schema versions and invalid document metadata.
 - Theme preference defaults to System, persists Light/Dark/System choices, and reacts to `prefers-color-scheme` changes in System mode.
 
