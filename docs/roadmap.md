@@ -22,6 +22,10 @@ Profile CRUD; multiple resumes/cover letters and role variants; IndexedDB Blob s
 - Do not introduce account, cloud, remote AI, or network persistence.
 **Exit:** profile and library data persist across reloads; only one default per document type; document replacement/deletion and selection are tested; backup round-trip restores profile, documents, answers, snippets, and defaults; theme preference persists and system mode follows OS changes.
 
+### M2.1 — Profile flexibility and UX polish
+Typed TypeScript catalogue for standard profile fields; UI-managed custom fields with label, value, type, aliases and section; shared standard/custom candidate-value adapter; backward-compatible profile and backup handling; preserve selected document type on upload; saved-answer copy/edit/delete; clear accessible save/upload/copy feedback and dirty/busy states.
+**Exit:** unit tests cover candidate-value normalization and legacy profiles; local smoke test verifies custom field persistence and backup round-trip, separate resume/cover-letter defaults, saved-answer actions, and visible status feedback.
+
 ## M3 — Form detection and metadata
 Detect likely application forms; inspect input, textarea, select, radio, checkbox, and file controls; extract labels, names, IDs, placeholders, examples, helper text, ARIA, grouping, and native options; filter unrelated/sensitive fields; fixtures for custom dropdowns (e.g. combobox patterns) in addition to native controls; capture current values and classify empty/placeholder/matching/different; time-boxed spike on same-origin iframes.
 **Exit:** fixtures verify metadata and exclusion; no fields are filled yet.
