@@ -1,1 +1,35 @@
-{"name":"career-pilot","version":"0.1.0","private":true,"type":"module","scripts":{"dev":"wxt","build":"wxt build","build:zip":"wxt zip","typecheck":"tsc --noEmit","lint":"eslint .","test":"vitest run","test:watch":"vitest"},"dependencies":{"react":"^19.1.0","react-dom":"^19.1.0"},"devDependencies":{"@eslint/js":"^9.30.0","@types/chrome":"^0.0.326","@types/react":"^19.1.8","@types/react-dom":"^19.1.7","@wxt-dev/module-react":"^1.0.0","autoprefixer":"^10.4.21","eslint":"^9.30.0","postcss":"^8.5.6","tailwindcss":"^3.4.17","typescript":"^5.8.3","typescript-eslint":"^8.35.1","vitest":"^3.2.4","wxt":"^0.20.6"}}
+{
+  "name": "career-pilot",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wxt",
+    "build": "wxt build",
+    "build:zip": "wxt zip",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint .",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "postinstall": "wxt prepare"
+  },
+  "dependencies": {
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.30.0",
+    "@types/chrome": "^0.0.326",
+    "@types/react": "^19.1.8",
+    "@types/react-dom": "^19.1.7",
+    "@wxt-dev/module-react": "^1.0.0",
+    "autoprefixer": "^10.4.21",
+    "eslint": "^9.30.0",
+    "postcss": "^8.5.6",
+    "tailwindcss": "^3.4.17",
+    "typescript": "^5.8.3",
+    "typescript-eslint": "^8.35.1",
+    "vitest": "^3.2.4",
+    "wxt": "^0.20.6"
+  }
+}
