@@ -59,10 +59,17 @@ export async function renameDocument(id: string, name: string): Promise<void> {
   try {
     const tx = db.transaction(DOCS, 'readwrite');
     const store = tx.objectStore(DOCS);
-    const current = await requestResult(store.get(id)) as CareerDocument | undefined;
-    if (!current) throw new Error('Document not found.');
-    store.put({ ...current, name: cleanName, updatedAt: Date.now() });
-    await new Promise<void>((resolve, reject) => { tx.oncomplete = () => resolve(); tx.onerror = () => reject(tx.error); tx.onabort = () => reject(tx.error); });
+    const request = store.get(id);
+    request.onsuccess = () => {
+      const current = request.result as CareerDocument | undefined;
+      if (!current) { tx.abort(); return; }
+      store.put({ ...current, name: cleanName, updatedAt: Date.now() });
+    };
+    await new Promise<void>((resolve, reject) => {
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+      tx.onabort = () => reject(tx.error ?? new Error('Document rename failed.'));
+    });
   } finally { db.close(); }
 }
 export async function setDefaultDocument(id: string, type: DocumentType): Promise<void> {
