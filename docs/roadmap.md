@@ -22,7 +22,11 @@ Profile CRUD; multiple resumes/cover letters and role variants; IndexedDB Blob s
 - Do not introduce account, cloud, remote AI, or network persistence.
 **Exit:** profile and library data persist across reloads; only one default per document type; document replacement/deletion and selection are tested; backup round-trip restores profile, documents, answers, snippets, and defaults; theme preference persists and system mode follows OS changes.
 
-### M2.1 — Profile flexibility and UX polish
+### M2.2 — Documents-first workflow and library UX
+Documents is the first side-panel section and the entry point to application preparation. Users import and manage resumes/cover letters, select a document for the file-upload step, then populate remaining fields from their saved profile and answers. Do not parse resumes into profile data. Add country-code selection, floating auto-dismiss status toasts, compact saved-answer table with truncated previews, exact plain-text clipboard preservation, and document rename/download actions.
+**Exit:** document-first navigation is the default; rename changes display metadata only; download returns the original file; country code persists; toasts auto-dismiss accessibly; answer table truncates visually without altering stored text; clipboard tests preserve whitespace and line breaks exactly.
+
+## M2.1 — Profile flexibility and UX polish
 Typed TypeScript catalogue for standard profile fields; UI-managed custom fields with label, value, type, aliases and section; shared standard/custom candidate-value adapter; backward-compatible profile and backup handling; preserve selected document type on upload; saved-answer copy/edit/delete; clear accessible save/upload/copy feedback and dirty/busy states.
 **Exit:** unit tests cover candidate-value normalization and legacy profiles; local smoke test verifies custom field persistence and backup round-trip, separate resume/cover-letter defaults, saved-answer actions, and visible status feedback.
 
