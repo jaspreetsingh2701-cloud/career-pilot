@@ -10,6 +10,7 @@ import type { CareerDocument, DocumentType, MessageSnippet, SavedAnswer } from '
 import { createBackup, restoreBackup } from '../../src/features/backup/backup';
 import { getThemePreference, saveThemePreference, type ThemePreference } from '../../src/features/settings/theme';
 import { writePlainText } from '../../src/features/library/clipboard';
+import { evaluateWebsiteAccess, getWebsiteAccessRules, parseHostRules, saveWebsiteAccessRules, type WebsiteAccessRules } from '../../src/features/access-rules/rules';
 
 type Tab = 'documents' | 'profile' | 'answers' | 'settings';
 const inputClass = 'mt-1 min-h-11 w-full rounded-control border border-border-input bg-card px-3 text-sm text-text-primary placeholder:text-text-secondary';
