@@ -7,6 +7,13 @@
 - Hide storage APIs behind repositories.
 - Version schemas and test migrations.
 
+## Website access rules
+Stored in `chrome.storage.local` under `careerPilot.websiteAccessRules`.
+```ts
+interface WebsiteAccessRules { allowlist: string[]; blocklist: string[]; includeSubdomains: boolean; }
+```
+An empty allowlist means no allowlist restriction. A populated allowlist restricts eligible hosts. Blocklist always wins. Subdomain matching applies only to domain rules; IP rules are exact. These rules are application policy, not browser permissions.
+
 ## Appearance preference
 
 `careerPilot.theme` in `chrome.storage.local` stores `light`, `dark`, or `system`. Missing or invalid values resolve to `system`. System mode follows the browser/OS `prefers-color-scheme` media query.

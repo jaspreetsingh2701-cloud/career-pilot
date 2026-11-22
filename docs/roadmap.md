@@ -30,7 +30,9 @@ Documents is the first side-panel section and the entry point to application pre
 Typed TypeScript catalogue for standard profile fields; UI-managed custom fields with label, value, type, aliases and section; shared standard/custom candidate-value adapter; backward-compatible profile and backup handling; preserve selected document type on upload; saved-answer copy/edit/delete; clear accessible save/upload/copy feedback and dirty/busy states.
 **Exit:** unit tests cover candidate-value normalization and legacy profiles; local smoke test verifies custom field persistence and backup round-trip, separate resume/cover-letter defaults, saved-answer actions, and visible status feedback.
 
-## M3 — Form detection and metadata
+## M3 — Form detection, metadata and website access rules
+Detect application forms on explicit user action; inspect supported controls and extract labels, names, IDs, placeholders, examples, helper text, ARIA metadata and native options; filter hidden, disabled and sensitive controls; keep scan values transient. Add locally stored domain/IP allowlists and blocklists, exact IP matching, optional domain subdomain matching, and blocklist precedence. Use activeTab + scripting for user-initiated page injection; do not add broad host permissions. Custom dropdowns and same-origin iframe handling remain follow-up spikes.
+**Exit:** fixture tests verify metadata and exclusions; access-rule tests cover validation, exact IPs, subdomains, allowlist behavior, blocklist precedence and unsupported URL schemes; scanning occurs only after a user click and only when the active URL passes local rules. No fields are filled yet.
 Detect likely application forms; inspect input, textarea, select, radio, checkbox, and file controls; extract labels, names, IDs, placeholders, examples, helper text, ARIA, grouping, and native options; filter unrelated/sensitive fields; fixtures for custom dropdowns (e.g. combobox patterns) in addition to native controls; capture current values and classify empty/placeholder/matching/different; time-boxed spike on same-origin iframes.
 **Exit:** fixtures verify metadata and exclusion; no fields are filled yet.
 

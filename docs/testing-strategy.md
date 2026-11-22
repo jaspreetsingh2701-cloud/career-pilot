@@ -10,6 +10,7 @@ Verify detection, matching, option selection, filling, document management, and 
 - Inspect the generated manifest: M1 must not request broad `host_permissions`; the content script is limited to localhost fixture URLs.
 
 ## Unit tests (Vitest)
+- Website rules: valid/invalid domains, IPv4 and IPv6, duplicate/blank lines, exact IP matching, optional subdomains, empty/populated allowlist behavior, blocklist precedence, unsupported URL schemes, and persisted settings.
 - Label association, wrapping labels, names/IDs, placeholders, ARIA names/descriptions.
 - Helper text, examples, fieldset/legend context.
 - Hidden, disabled, read-only, required and unrelated controls.

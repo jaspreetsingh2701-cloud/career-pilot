@@ -10,6 +10,7 @@ import type { CareerDocument, DocumentType, MessageSnippet, SavedAnswer } from '
 import { createBackup, restoreBackup } from '../../src/features/backup/backup';
 import { getThemePreference, saveThemePreference, type ThemePreference } from '../../src/features/settings/theme';
 import { writePlainText } from '../../src/features/library/clipboard';
+import { evaluateWebsiteAccess, getWebsiteAccessRules, parseHostRules, saveWebsiteAccessRules, type WebsiteAccessRules } from '../../src/features/access-rules/rules';
 
 type Tab = 'documents' | 'profile' | 'answers' | 'settings';
 const inputClass = 'mt-1 min-h-11 w-full rounded-control border border-border-input bg-card px-3 text-sm text-text-primary placeholder:text-text-secondary';
@@ -40,13 +41,16 @@ export default function App() {
   const [answerBody, setAnswerBody] = useState('');
   const [snippetTitle, setSnippetTitle] = useState('');
   const [snippetBody, setSnippetBody] = useState('');
+  const [accessRules, setAccessRules] = useState<WebsiteAccessRules>({ allowlist: [], blocklist: [], includeSubdomains: true });
+  const [allowlistText, setAllowlistText] = useState('');
+  const [blocklistText, setBlocklistText] = useState('');
 
   async function refreshLibrary() {
     const [docs, savedAnswers, savedSnippets] = await Promise.all([listDocuments(), listAnswers(), listSnippets()]);
     setDocuments(docs); setAnswers(savedAnswers); setSnippets(savedSnippets);
   }
   useEffect(() => {
-    void Promise.all([getProfile(), getThemePreference()]).then(([p, t]) => { setProfile({ ...p, customFields: p.customFields ?? [] }); setTheme(t); });
+    void Promise.all([getProfile(), getThemePreference(), getWebsiteAccessRules()]).then(([p, t, rules]) => { setProfile({ ...p, customFields: p.customFields ?? [] }); setTheme(t); setAccessRules(rules); setAllowlistText(rules.allowlist.join('\n')); setBlocklistText(rules.blocklist.join('\n')); });
     void refreshLibrary();
   }, []);
   useEffect(() => {
@@ -105,6 +109,18 @@ export default function App() {
     setSnippetTitle(''); setSnippetBody(''); await refreshLibrary(); setStatus('Message snippet added.');
   }
   async function updateTheme(value: ThemePreference) { setTheme(value); await saveThemePreference(value); }
+  async function persistAccessRules() {
+    try { const next = { allowlist: parseHostRules(allowlistText), blocklist: parseHostRules(blocklistText), includeSubdomains: accessRules.includeSubdomains }; await saveWebsiteAccessRules(next); setAccessRules(next); setAllowlistText(next.allowlist.join('\n')); setBlocklistText(next.blocklist.join('\n')); setStatus('Website access rules saved locally.'); }
+    catch (error) { setStatus(error instanceof Error ? error.message : 'Could not save website access rules.'); }
+  }
+  async function detectCurrentForm() {
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    if (!tab?.id || !tab.url) { setStatus('The active tab URL is unavailable.'); return; }
+    const decision = evaluateWebsiteAccess(tab.url, accessRules);
+    if (!decision.allowed) { setStatus(decision.reason); return; }
+    try { await chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ['content-scripts/content.js'] }); const response = await chrome.tabs.sendMessage(tab.id, { type: 'DETECT_FORM_FIELDS' }); if (!response?.ok) { setStatus(response?.error ?? 'Could not inspect this page.'); return; } setStatus(response.fields.length ? 'Detected ' + response.fields.length + ' supported form fields.' : 'No supported form fields were found on this page.'); }
+    catch (error) { setStatus(error instanceof Error ? 'Detection unavailable: ' + error.message : 'Detection is unavailable on this page.'); }
+  }
   async function clearAll() {
     if (!window.confirm('Delete your CareerPilot profile, documents, saved answers and snippets from this browser?')) return;
     await Promise.all([clearLibrary(), browser.storage.local.remove('careerPilot.profile')]);
@@ -154,6 +170,7 @@ export default function App() {
 
         {tab === 'documents' && <div className="rounded-card border border-border bg-card p-card">
           <SectionHeader title="Document library" count={documents.length} />
+          <Button className="mb-3 w-full" onClick={() => void detectCurrentForm()}>Detect fields on active tab</Button>
           <p className="mb-3 mt-2 text-xs leading-5 text-text-secondary">Add your resume and cover letter here first. The library stores them locally; until form attachment is implemented, download a copy to upload manually. The intended application flow is resume first, then remaining fields from your profile and saved answers. Uploading a document does not change your profile. PDF, DOC or DOCX up to 5 MB.</p>
           <label className={labelClass}>Document type<select className={inputClass} value={documentType} onChange={e => setDocumentType(e.target.value as DocumentType)}><option value="resume">Resume</option><option value="cover-letter">Cover letter</option><option value="other">Other</option></select></label><label className="mt-3 block text-xs font-semibold text-text-secondary">Import document<input type="file" accept=".pdf,.doc,.docx" disabled={uploading} onChange={uploadDocument} className="mt-2 block w-full text-xs file:mr-2 file:min-h-10 file:rounded-control file:border-0 file:bg-accent file:px-3 file:text-white" /></label>
           {uploading && <p className="mt-2 text-xs text-accent" role="status">Uploading selected document…</p>}
@@ -222,6 +239,13 @@ export default function App() {
             </label>
           </div>
           <div className="rounded-card border border-border bg-card p-card">
+            <SectionHeader title="Website access rules" />
+            <p className="mt-2 text-xs leading-5 text-text-secondary">One domain or exact IP address per line. Blocklist takes priority. An empty allowlist allows all otherwise-supported HTTP(S) sites.</p>
+            <label className={`${labelClass} mt-3`}>Allowlist (optional)<textarea className={`${inputClass} min-h-24 py-2`} value={allowlistText} onChange={e => setAllowlistText(e.target.value)} /></label>
+            <label className={`${labelClass} mt-3`}>Blocklist<textarea className={`${inputClass} min-h-24 py-2`} value={blocklistText} onChange={e => setBlocklistText(e.target.value)} /></label>
+            <label className="mt-3 flex items-center gap-2 text-xs text-text-secondary"><input type="checkbox" checked={accessRules.includeSubdomains} onChange={e => setAccessRules(current => ({ ...current, includeSubdomains: e.target.checked }))} /> Include subdomains (IP rules always match exactly)</label>
+            <Button className="mt-3 w-full" variant="secondary" onClick={() => void persistAccessRules()}>Save website rules</Button>
+            <div className="my-4 border-t border-border" />
             <SectionHeader title="Your data and privacy" />
             <p className="mt-2 text-xs leading-5 text-text-secondary">Your profile, documents, saved answers, snippets and appearance preference are stored locally in this browser. CareerPilot has no account, cloud sync or backend.</p>
             <Banner className="mt-3">Clear local data permanently deletes your profile, document library, saved answers and snippets from this browser.</Banner>

@@ -44,7 +44,16 @@ Job seekers repeatedly enter contact, experience, compensation, availability, an
 - Allow copying saved answers as plain text, with visible success or manual-copy fallback feedback.
 - Never invent personal history, eligibility, or legal declarations.
 
-### FR-04 Form detection and metadata
+### FR-04 Website access rules
+- Allow users to define local domain and exact IPv4/IPv6 allowlists and blocklists, one entry per line.
+- An empty allowlist means all otherwise-supported HTTP(S) sites are eligible; a populated allowlist restricts eligible hosts.
+- Blocklist always takes precedence over allowlist.
+- Domain rules may optionally include subdomains; IP rules match exact addresses only.
+- Validate entries and reject schemes, ports, paths and malformed hosts.
+- Store rules in chrome.storage.local. Rules are application policy, not browser permissions; Chrome's permission model remains authoritative.
+- Check rules before each user-initiated scan and explain blocked/not-allowlisted outcomes.
+
+### FR-05 Form detection and metadata
 On user request, detect likely application forms and supported controls. Extract available:
 - Tag/control type, id, name, placeholder.
 - Associated label and accessible name/description (ARIA).
