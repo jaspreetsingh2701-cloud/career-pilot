@@ -6,7 +6,7 @@ import { SectionHeader } from '../../src/components/common/SectionHeader';
 import { getProfile, saveProfile } from '../../src/features/profile/repository';
 import { emptyProfile, type UserProfile } from '../../src/features/profile/types';
 import { addDocument, clearLibrary, deleteAnswer, deleteDocument, deleteSnippet, listAnswers, listDocuments, listSnippets, saveAnswer, saveSnippet, setDefaultDocument } from '../../src/features/library/database';
-import type { CareerDocument, DocumentType, SavedAnswer } from '../../src/features/library/types';
+import type { CareerDocument, DocumentType, MessageSnippet, SavedAnswer } from '../../src/features/library/types';
 import { createBackup, restoreBackup } from '../../src/features/backup/backup';
 import { getThemePreference, saveThemePreference, type ThemePreference } from '../../src/features/settings/theme';
 
