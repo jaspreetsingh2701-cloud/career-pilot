@@ -9,7 +9,7 @@ A local-first Chrome extension (Manifest V3) that reduces repetitive job-applica
 - Never submits the form and never touches sensitive fields (passwords, OTPs, payment, work-authorization declarations).
 
 ## Status
-M2 — Profile and local document library. Profile, documents, saved answers, snippets, backup/restore, and appearance preferences are implemented locally; see [the roadmap](docs/roadmap.md).
+M5 — Mapping review and guarded autofill integration. Profile, local document library, form detection, deterministic mapping, per-field review/approval, and guarded filling are implemented in the current development branch; see [the roadmap](docs/roadmap.md).
 
 ## Stack
 WXT, React, TypeScript, Tailwind CSS, chrome.storage.local, IndexedDB, Vitest, Playwright.
