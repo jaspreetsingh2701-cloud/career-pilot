@@ -1,6 +1,9 @@
 import { beforeEach, describe, expect, it } from 'vitest';
+import { parseHTML } from 'linkedom';
 import { fillApprovedFields, type FillTarget } from './fill-approved-fields';
 
+const { document, window } = parseHTML('<html><body></body></html>');
+Object.assign(globalThis, { HTMLInputElement: window.HTMLInputElement, HTMLTextAreaElement: window.HTMLTextAreaElement, HTMLSelectElement: window.HTMLSelectElement, Event: window.Event });
 const target = (overrides: Partial<FillTarget> = {}): FillTarget => ({
   fieldId: 'email-field', index: 0, tagName: 'input', name: 'email', elementId: 'email',
   controlType: 'email', expectedValue: 'person@example.com', approved: true, ...overrides,
