@@ -119,15 +119,15 @@ export default function App() {
           <SectionHeader title="Candidate profile" />
           <p className="mb-4 mt-2 text-xs leading-5 text-text-secondary">Add only information you want to reuse in job applications. Optional fields can stay empty.</p>
           <div className="grid grid-cols-2 gap-3">
-            <label className={labelClass}>First name<input className={inputClass} value={profile.firstName} onChange={e => setProfile({ ...profile, firstName: e.target.value }); setDirty(true)} /></label>
-            <label className={labelClass}>Last name<input className={inputClass} value={profile.lastName} onChange={e => setProfile({ ...profile, lastName: e.target.value }); setDirty(true)} /></label>
+            <label className={labelClass}>First name<input className={inputClass} value={profile.firstName} onChange={e => { setProfile({ ...profile, firstName: e.target.value }); setDirty(true); }} /></label>
+            <label className={labelClass}>Last name<input className={inputClass} value={profile.lastName} onChange={e => { setProfile({ ...profile, lastName: e.target.value }); setDirty(true); }} /></label>
           </div>
-          <label className={`${labelClass} mt-3`}>Email<input type="email" className={inputClass} value={profile.email} onChange={e => setProfile({ ...profile, email: e.target.value }); setDirty(true)} /></label>
-          <label className={`${labelClass} mt-3`}>Phone<input className={inputClass} value={profile.phone ?? ''} onChange={e => setProfile({ ...profile, phone: e.target.value }); setDirty(true)} /></label>
-          <label className={`${labelClass} mt-3`}>Current location<input className={inputClass} value={profile.currentLocation ?? ''} onChange={e => setProfile({ ...profile, currentLocation: e.target.value }); setDirty(true)} /></label>
-          <label className={`${labelClass} mt-3`}>Current designation<input className={inputClass} value={profile.currentDesignation ?? ''} onChange={e => setProfile({ ...profile, currentDesignation: e.target.value }); setDirty(true)} /></label>
-          <label className={`${labelClass} mt-3`}>Current company<input className={inputClass} value={profile.currentCompany ?? ''} onChange={e => setProfile({ ...profile, currentCompany: e.target.value }); setDirty(true)} /></label>
-          <label className={`${labelClass} mt-3`}>Preferred role<input className={inputClass} value={profile.preferredRole ?? ''} onChange={e => setProfile({ ...profile, preferredRole: e.target.value }); setDirty(true)} /></label>
+          <label className={`${labelClass} mt-3`}>Email<input type="email" className={inputClass} value={profile.email} onChange={e => { setProfile({ ...profile, email: e.target.value }); setDirty(true); }} /></label>
+          <label className={`${labelClass} mt-3`}>Phone<input className={inputClass} value={profile.phone ?? ''} onChange={e => { setProfile({ ...profile, phone: e.target.value }); setDirty(true); }} /></label>
+          <label className={`${labelClass} mt-3`}>Current location<input className={inputClass} value={profile.currentLocation ?? ''} onChange={e => { setProfile({ ...profile, currentLocation: e.target.value }); setDirty(true); }} /></label>
+          <label className={`${labelClass} mt-3`}>Current designation<input className={inputClass} value={profile.currentDesignation ?? ''} onChange={e => { setProfile({ ...profile, currentDesignation: e.target.value }); setDirty(true); }} /></label>
+          <label className={`${labelClass} mt-3`}>Current company<input className={inputClass} value={profile.currentCompany ?? ''} onChange={e => { setProfile({ ...profile, currentCompany: e.target.value }); setDirty(true); }} /></label>
+          <label className={`${labelClass} mt-3`}>Preferred role<input className={inputClass} value={profile.preferredRole ?? ''} onChange={e => { setProfile({ ...profile, preferredRole: e.target.value }); setDirty(true); }} /></label>
           <div className="mt-4 rounded-control bg-muted p-3 text-xs text-text-secondary">{dirty ? 'You have unsaved profile changes.' : 'Your profile is saved locally.'} {!profile.firstName.trim() || !profile.email.trim() ? 'First name and email are required to save.' : ''}</div>
           <Button className="mt-2 w-full" onClick={persistProfile} disabled={busy || !dirty || !profile.firstName.trim() || !profile.email.trim()}>{busy ? 'Saving…' : dirty ? 'Save profile' : 'Saved'}</Button>
           <div className="mt-5 border-t border-border pt-4"><SectionHeader title="Custom profile fields" />
