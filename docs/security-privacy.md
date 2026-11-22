@@ -21,7 +21,9 @@ Never autofill passwords, OTPs, payment-card, bank-account, or authentication co
 - Provide deletion and clear failure/fallback feedback.
 
 ## Extension permissions
-- M1 requests only `storage`, `sidePanel`, and `activeTab`; no broad `host_permissions` are declared.
+- M1 requests only `storage`, `sidePanel`, `activeTab`, and `clipboardWrite`; no broad `host_permissions` are declared.
+- Profile and appearance preference use `chrome.storage.local`; documents and reusable collections use IndexedDB. No data is sent to a server. `clipboardWrite` is used only after the user explicitly selects Copy for a saved snippet; CareerPilot never reads clipboard contents.
+- Imported documents are restricted to PDF, DOC, or DOCX and 5 MB per file. Backup restore validates the schema and document metadata before replacing local records.
 - The M1 content script is restricted to localhost fixture origins to validate the message path without requesting access to arbitrary sites.
 - Revisit content-script injection and any additional permission only when implementing user-initiated detection in M3; document the rationale before changing the manifest.
 - Avoid broad all-sites host permissions unless justified. Explain optional permission prompts.

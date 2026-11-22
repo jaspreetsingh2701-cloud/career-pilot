@@ -1,13 +1,21 @@
 import type { Config } from 'tailwindcss';
 
 export default {
+  darkMode: 'class',
   content: ['./entrypoints/**/*.{html,ts,tsx}', './src/**/*.{ts,tsx}'],
   theme: { extend: {
     colors: {
-      page: '#F4F6F9', card: '#FFFFFF', muted: '#EEF0F4', border: '#E1E5EB', 'border-input': '#CBD2DC',
-      'text-primary': '#14213D', 'text-secondary': '#4B5565', accent: '#0F766E',
-      success: { DEFAULT: '#0B5D3B', bg: '#DDF3E7' }, warning: { DEFAULT: '#7A4A00', bg: '#FFF0CC', border: '#B7791F' },
-      danger: '#B42318', section: '#E9EDF2', selected: '#F0FAF7', disabled: '#E7EAF0', 'progress-track': '#E1E5EB'
+      page: 'rgb(var(--page) / <alpha-value>)',
+      card: 'rgb(var(--card) / <alpha-value>)',
+      muted: 'rgb(var(--muted) / <alpha-value>)',
+      border: 'rgb(var(--border) / <alpha-value>)',
+      'border-input': 'rgb(var(--border-input) / <alpha-value>)',
+      'text-primary': 'rgb(var(--text-primary) / <alpha-value>)',
+      'text-secondary': 'rgb(var(--text-secondary) / <alpha-value>)',
+      accent: 'rgb(var(--accent) / <alpha-value>)',
+      success: { DEFAULT: 'rgb(var(--success) / <alpha-value>)', bg: 'rgb(var(--success-bg) / <alpha-value>)' },
+      warning: { DEFAULT: 'rgb(var(--warning) / <alpha-value>)', bg: 'rgb(var(--warning-bg) / <alpha-value>)', border: 'rgb(var(--warning-border) / <alpha-value>)' },
+      danger: 'rgb(var(--danger) / <alpha-value>)',
     },
     fontFamily: { sans: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'] },
     borderRadius: { card: '10px', control: '8px' },

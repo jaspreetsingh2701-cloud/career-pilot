@@ -7,6 +7,10 @@
 - Hide storage APIs behind repositories.
 - Version schemas and test migrations.
 
+## Appearance preference
+
+`careerPilot.theme` in `chrome.storage.local` stores `light`, `dark`, or `system`. Missing or invalid values resolve to `system`. System mode follows the browser/OS `prefers-color-scheme` media query.
+
 ## Candidate profile
 ```ts
 interface UserProfile {

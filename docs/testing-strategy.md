@@ -20,7 +20,9 @@ Verify detection, matching, option selection, filling, document management, and 
 - Native option matching, disabled/placeholder options, no-match and multi-match behavior.
 - Input/select/radio/checkbox updates and controlled-framework events.
 - Stale/rerendered targets and partial failures.
-- Profile CRUD, multiple documents, default uniqueness, Blob round-trip, validation, replacement/deletion, clear-all and migrations.
+- Profile CRUD and persistence; multiple documents, independent default uniqueness, Blob round-trip, file type/size validation, replacement/deletion, clear-all and migrations.
+- Backup export/restore round-trip for profile, documents, saved answers, snippets and default flags; reject unsupported schema versions and invalid document metadata.
+- Theme preference defaults to System, persists Light/Dark/System choices, and reacts to `prefers-color-scheme` changes in System mode.
 
 ## Local fixture application
 Create realistic fixtures for:
