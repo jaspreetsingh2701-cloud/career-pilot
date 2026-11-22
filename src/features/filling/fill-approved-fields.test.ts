@@ -6,7 +6,7 @@ const { document, window } = parseHTML('<html><body></body></html>');
 Object.assign(globalThis, { HTMLInputElement: window.HTMLInputElement, HTMLTextAreaElement: window.HTMLTextAreaElement, HTMLSelectElement: window.HTMLSelectElement, Event: window.Event });
 const target = (overrides: Partial<FillTarget> = {}): FillTarget => ({
   fieldId: 'email-field', index: 0, tagName: 'input', name: 'email', elementId: 'email',
-  controlType: 'email', expectedValue: 'person@example.com', approved: true, ...overrides,
+  controlType: 'text', expectedValue: 'person@example.com', approved: true, ...overrides,
 });
 describe('fillApprovedFields', () => {
   beforeEach(() => { document.body.innerHTML = ''; });
@@ -15,7 +15,7 @@ describe('fillApprovedFields', () => {
     const input = document.querySelector('input')!;
     let inputEvents = 0; let changeEvents = 0;
     input.addEventListener('input', () => inputEvents++); input.addEventListener('change', () => changeEvents++);
-    const [result] = fillApprovedFields(document, [target()]);
+    const [result] = fillApprovedFields(document, [target({ controlType: 'email' })]);
     expect(result.status).toBe('filled'); expect(input.value).toBe('person@example.com');
     expect(inputEvents).toBe(1); expect(changeEvents).toBe(1);
   });
@@ -38,6 +38,11 @@ describe('fillApprovedFields', () => {
     document.body.innerHTML = '<input id="different" name="other">';
     expect(fillApprovedFields(document, [target()])[0].status).toBe('stale');
   });
+  it('rejects a control whose type changed after scanning', () => {
+    document.body.innerHTML = '<input id="email" name="email" type="password">';
+    expect(fillApprovedFields(document, [target()])[0].status).toBe('stale');
+  });
+
   it('never fills sensitive controls', () => {
     document.body.innerHTML = '<input id="otp" name="otp" type="text">';
     expect(fillApprovedFields(document, [target({ elementId: 'otp', name: 'otp' })])[0].status).toBe('unsupported');
@@ -52,4 +57,18 @@ describe('fillApprovedFields', () => {
     document.body.innerHTML = '<input id="other" name="other"><input id="email" name="email">';
     expect(fillApprovedFields(document, [target()])[0].status).toBe('stale');
   });
+  it('does not submit a form while filling approved fields', () => {
+    document.body.innerHTML = '<form><input id="email" name="email"></form>';
+    let submits = 0;
+    document.querySelector('form')!.addEventListener('submit', event => { event.preventDefault(); submits++; });
+    expect(fillApprovedFields(document, [target()])[0].status).toBe('filled');
+    expect(submits).toBe(0);
+  });
+  it('requires explicit per-field replacement approval', () => {
+    document.body.innerHTML = '<input id="email" name="email" value="site@example.com"><input id="other" name="other" value="keep">';
+    const first = fillApprovedFields(document, [target({ replaceExisting: true })])[0];
+    expect(first.status).toBe('filled');
+    expect((document.querySelector('#other') as HTMLInputElement).value).toBe('keep');
+  });
+
 });

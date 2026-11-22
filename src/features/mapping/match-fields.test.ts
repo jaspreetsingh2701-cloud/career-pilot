@@ -14,7 +14,7 @@ const answers: SavedAnswer[] = [{
   keywords: ['motivation', 'interest in role'], createdAt: 1, updatedAt: 1,
 }];
 const field = (overrides: Partial<DetectedField>): DetectedField => ({
-  id: 'field-1', tagName: 'input', controlType: 'text', label: '', currentValue: '',
+  id: 'field-1', index: 0, tagName: 'input', controlType: 'text', label: '', currentValue: '',
   required: false, disabled: false, readOnly: false, hidden: false, ...overrides,
 });
 

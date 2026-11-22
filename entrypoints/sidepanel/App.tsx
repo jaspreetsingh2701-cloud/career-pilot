@@ -11,6 +11,10 @@ import { createBackup, restoreBackup } from '../../src/features/backup/backup';
 import { getThemePreference, saveThemePreference, type ThemePreference } from '../../src/features/settings/theme';
 import { writePlainText } from '../../src/features/library/clipboard';
 import { evaluateWebsiteAccess, getWebsiteAccessRules, parseHostRules, saveWebsiteAccessRules, type WebsiteAccessRules } from '../../src/features/access-rules/rules';
+import { suggestFieldMappings, type MappingSuggestion } from '../../src/features/mapping/match-fields';
+import { getProfileCandidateValues } from '../../src/features/profile/utils/profile-field-mapper';
+import type { DetectedField } from '../../src/features/detection/detect-fields';
+import type { FillResult, FillTarget } from '../../src/features/filling/fill-approved-fields';
 
 type Tab = 'documents' | 'profile' | 'answers' | 'settings';
 const inputClass = 'mt-1 min-h-11 w-full rounded-control border border-border-input bg-card px-3 text-sm text-text-primary placeholder:text-text-secondary';
@@ -44,6 +48,15 @@ export default function App() {
   const [accessRules, setAccessRules] = useState<WebsiteAccessRules>({ allowlist: [], blocklist: [], includeSubdomains: true });
   const [allowlistText, setAllowlistText] = useState('');
   const [blocklistText, setBlocklistText] = useState('');
+  const [detectedFields, setDetectedFields] = useState<DetectedField[]>([]);
+  const [mappingSuggestions, setMappingSuggestions] = useState<MappingSuggestion[]>([]);
+  const [approvedFields, setApprovedFields] = useState<Record<string, boolean>>({});
+  const [editedValues, setEditedValues] = useState<Record<string, string>>({});
+  const [replaceFields, setReplaceFields] = useState<Record<string, boolean>>({});
+  const [fillResults, setFillResults] = useState<FillResult[]>([]);
+  const [scanning, setScanning] = useState(false);
+  const [filling, setFilling] = useState(false);
+  const [scannedTab, setScannedTab] = useState<{ id: number; url: string } | null>(null);
 
   async function refreshLibrary() {
     const [docs, savedAnswers, savedSnippets] = await Promise.all([listDocuments(), listAnswers(), listSnippets()]);
@@ -114,12 +127,51 @@ export default function App() {
     catch (error) { setStatus(error instanceof Error ? error.message : 'Could not save website access rules.'); }
   }
   async function detectCurrentForm() {
-    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-    if (!tab?.id || !tab.url) { setStatus('The active tab URL is unavailable.'); return; }
-    const decision = evaluateWebsiteAccess(tab.url, accessRules);
-    if (!decision.allowed) { setStatus(decision.reason); return; }
-    try { await chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ['content-scripts/content.js'] }); const response = await chrome.tabs.sendMessage(tab.id, { type: 'DETECT_FORM_FIELDS' }); if (!response?.ok) { setStatus(response?.error ?? 'Could not inspect this page.'); return; } setStatus(response.fields.length ? 'Detected ' + response.fields.length + ' supported form fields.' : 'No supported form fields were found on this page.'); }
-    catch (error) { setStatus(error instanceof Error ? 'Detection unavailable: ' + error.message : 'Detection is unavailable on this page.'); }
+    setScanning(true); setFillResults([]); setApprovedFields({}); setEditedValues({}); setReplaceFields({}); setScannedTab(null);
+    const [activeTab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    if (!activeTab?.id || !activeTab.url) { setStatus('The active tab URL is unavailable.'); setScanning(false); return; }
+    const decision = evaluateWebsiteAccess(activeTab.url, accessRules);
+    if (!decision.allowed) { setStatus(decision.reason); setScanning(false); return; }
+    try {
+      await chrome.scripting.executeScript({ target: { tabId: activeTab.id }, files: ['content-scripts/content.js'] });
+      const response = await chrome.tabs.sendMessage(activeTab.id, { type: 'DETECT_FORM_FIELDS' });
+      if (!response?.ok) { setStatus(response?.error ?? 'Could not inspect this page.'); return; }
+      const fields = response.fields as DetectedField[];
+      setScannedTab({ id: activeTab.id, url: activeTab.url });
+      setDetectedFields(fields);
+      const suggestions = suggestFieldMappings({ fields, profileValues: getProfileCandidateValues(profile), savedAnswers: answers });
+      setMappingSuggestions(suggestions);
+      setStatus(fields.length ? `Detected ${fields.length} fields. Review every suggestion before filling.` : 'No supported form fields were found on this page.');
+    } catch (error) { setStatus(error instanceof Error ? 'Detection unavailable: ' + error.message : 'Detection is unavailable on this page.'); }
+    finally { setScanning(false); }
+  }
+  async function fillApproved() {
+    const selected = detectedFields.filter(field => approvedFields[field.id]);
+    if (!selected.length) { setStatus('Approve at least one field before filling.'); return; }
+    setFilling(true); setFillResults([]);
+    try {
+      const [activeTab] = await chrome.tabs.query({ active: true, currentWindow: true });
+      if (!activeTab?.id || !activeTab.url || !scannedTab || activeTab.id !== scannedTab.id || activeTab.url !== scannedTab.url) { setStatus('The active tab changed after scanning. Re-scan before filling.'); return; }
+      const decision = evaluateWebsiteAccess(activeTab.url, accessRules);
+      if (!decision.allowed) { setStatus(decision.reason); return; }
+      const targets: FillTarget[] = selected.map(field => {
+        const suggestion = mappingSuggestions.find(item => item.detectedFieldId === field.id);
+        return {
+          fieldId: field.id, index: field.index,
+          tagName: field.tagName, name: field.name, elementId: field.elementId,
+          controlType: field.controlType,
+          expectedValue: editedValues[field.id] ?? suggestion?.selectedOption?.value ?? suggestion?.proposedValue ?? '',
+          approved: true, replaceExisting: replaceFields[field.id] === true,
+        };
+      }).filter(target => target.expectedValue.trim());
+      if (!targets.length) { setStatus('No approved fields have a usable value.'); return; }
+      const response = await chrome.tabs.sendMessage(activeTab.id, { type: 'FILL_APPROVED_FIELDS', targets });
+      if (!response?.ok) { setStatus(response?.error ?? 'Autofill could not be completed.'); return; }
+      setFillResults(response.results as FillResult[]);
+      const filled = (response.results as FillResult[]).filter(item => item.status === 'filled').length;
+      setStatus(`Fill finished: ${filled} field(s) updated. Review the results and page before submitting manually.`);
+    } catch (error) { setStatus(error instanceof Error ? 'Autofill failed: ' + error.message : 'Autofill failed.'); }
+    finally { setFilling(false); }
   }
   async function clearAll() {
     if (!window.confirm('Delete your CareerPilot profile, documents, saved answers and snippets from this browser?')) return;
@@ -171,6 +223,34 @@ export default function App() {
         {tab === 'documents' && <div className="rounded-card border border-border bg-card p-card">
           <SectionHeader title="Document library" count={documents.length} />
           <Button className="mb-3 w-full" onClick={() => void detectCurrentForm()}>Detect fields on active tab</Button>
+          {scanning && <p className="mb-3 text-xs text-accent" role="status">Scanning active tab…</p>}
+          {detectedFields.length > 0 && <div className="mb-4 space-y-3">
+            <div className="flex items-center justify-between"><SectionHeader title="Review field suggestions" count={detectedFields.length} /><button className="text-xs font-semibold text-accent" onClick={() => { setDetectedFields([]); setMappingSuggestions([]); setApprovedFields({}); setFillResults([]); setScannedTab(null); }}>Clear scan</button></div>
+            <p className="text-xs leading-5 text-text-secondary">Review and edit each value. Only individually approved fields are sent to the page. Existing values are preserved unless replacement is explicitly enabled.</p>
+            {detectedFields.map(field => {
+              const suggestion = mappingSuggestions.find(item => item.detectedFieldId === field.id);
+              const result = fillResults.find(item => item.fieldId === field.id);
+              const value = editedValues[field.id] ?? suggestion?.selectedOption?.value ?? suggestion?.proposedValue ?? '';
+              const fillable = ['text','email','tel','url','number','date','month','week','time','datetime-local','search','textarea','select'].includes(field.controlType);
+              return <div key={field.id} className="rounded-control border border-border p-3">
+                <div className="flex items-start justify-between gap-2"><div className="min-w-0"><p className="text-xs font-semibold">{field.label || field.name || field.elementId || field.controlType}</p><p className="mt-1 text-[11px] text-text-secondary">{field.controlType} · {suggestion?.status ?? 'no-match'}{suggestion ? ` · ${suggestion.confidence}%` : ''}</p></div><span className="text-[11px] font-semibold text-text-secondary">{result?.status ?? (approvedFields[field.id] ? 'Approved' : 'Review')}</span></div>
+                {!fillable && <p className="mt-1 text-[11px] text-warning">This control type needs grouped-control support and cannot be filled in this phase.</p>}
+                {suggestion?.reasons.map(reason => <p key={reason} className="mt-1 text-[11px] text-text-secondary">{reason}</p>)}
+                {suggestion?.alternatives && <p className="mt-1 text-[11px] text-warning">Multiple possible sources. Choose/edit a value manually before approval.</p>}
+                <label className="mt-2 block text-[11px] font-semibold text-text-secondary">Proposed value
+                  <textarea className={inputClass + ' min-h-16 py-2'} value={value} onChange={event => setEditedValues(current => ({ ...current, [field.id]: event.target.value }))} placeholder="No suggestion — enter a value manually" />
+                </label>
+                <p className="mt-1 break-words text-[11px] text-text-secondary">Current page value: {field.currentValue || '(empty)'}</p>
+                <div className="mt-2 flex flex-wrap items-center gap-3">
+                  <label className="flex items-center gap-1 text-[11px]"><input type="checkbox" disabled={!fillable || !value.trim()} checked={approvedFields[field.id] === true} onChange={event => setApprovedFields(current => ({ ...current, [field.id]: event.target.checked }))} /> Approve this field</label>
+                  {!!field.currentValue && <label className="flex items-center gap-1 text-[11px]"><input type="checkbox" checked={replaceFields[field.id] === true} onChange={event => setReplaceFields(current => ({ ...current, [field.id]: event.target.checked }))} /> Replace existing value</label>}
+                </div>
+                {result && <p className="mt-2 text-[11px] font-semibold" role="status">{result.status}: {result.message}</p>}
+              </div>;
+            })}
+            <Button className="w-full" onClick={() => void fillApproved()} disabled={filling || !Object.values(approvedFields).some(Boolean)}>{filling ? 'Filling approved fields…' : 'Fill approved fields'}</Button>
+            <p className="text-[11px] leading-5 text-text-secondary">CareerPilot never submits the form. Check the page and submit it yourself.</p>
+          </div>}
           <p className="mb-3 mt-2 text-xs leading-5 text-text-secondary">Add your resume and cover letter here first. The library stores them locally; until form attachment is implemented, download a copy to upload manually. The intended application flow is resume first, then remaining fields from your profile and saved answers. Uploading a document does not change your profile. PDF, DOC or DOCX up to 5 MB.</p>
           <label className={labelClass}>Document type<select className={inputClass} value={documentType} onChange={e => setDocumentType(e.target.value as DocumentType)}><option value="resume">Resume</option><option value="cover-letter">Cover letter</option><option value="other">Other</option></select></label><label className="mt-3 block text-xs font-semibold text-text-secondary">Import document<input type="file" accept=".pdf,.doc,.docx" disabled={uploading} onChange={uploadDocument} className="mt-2 block w-full text-xs file:mr-2 file:min-h-10 file:rounded-control file:border-0 file:bg-accent file:px-3 file:text-white" /></label>
           {uploading && <p className="mt-2 text-xs text-accent" role="status">Uploading selected document…</p>}

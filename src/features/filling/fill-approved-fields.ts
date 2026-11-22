@@ -15,7 +15,7 @@ const SENSITIVE = /password|one.?time|otp|verification.?code|security.?code|cred
 const EXCLUDED_TYPES = new Set(['hidden','password','submit','button','reset','image','file']);
 const normalize = (value: string) => value.trim().replace(/\s+/g, ' ').toLocaleLowerCase();
 function isSensitive(el: HTMLElement & { name?: string; type?: string; id?: string; autocomplete?: string }): boolean {
-  return EXCLUDED_TYPES.has((el.type ?? '').toLowerCase()) ||
+  return EXCLUDED_TYPES.has((el.getAttribute('type') ?? el.type ?? '').toLowerCase()) ||
     SENSITIVE.test([el.name,el.id,el.getAttribute('autocomplete'),el.getAttribute('aria-label')].filter(Boolean).join(' '));
 }
 function currentValue(el: HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement): string {
@@ -33,7 +33,8 @@ export function fillApprovedFields(root: ParentNode, targets: FillTarget[]): Fil
   return targets.map(target => {
     if (!target.approved) return { fieldId: target.fieldId, status: 'not-approved', message: 'This field was not approved.' };
     const el = elements[target.index];
-    if (!el || el.tagName.toLowerCase() !== target.tagName ||
+    const liveControlType = !el ? undefined : el instanceof HTMLInputElement ? (el.getAttribute('type') ?? 'text').toLowerCase() : el.tagName.toLowerCase();
+    if (!el || el.tagName.toLowerCase() !== target.tagName || liveControlType !== target.controlType ||
       (target.elementId && el.id !== target.elementId) || (target.name && el.name !== target.name)) {
       return { fieldId: target.fieldId, status: 'stale', message: 'The field changed after scanning. Re-scan before filling.' };
     }

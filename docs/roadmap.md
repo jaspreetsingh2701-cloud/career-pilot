@@ -42,7 +42,8 @@ Deterministic explainable matching from detected metadata to standard/custom pro
 
 ## M5 — Autofill engine
 Approved text/textarea/select/radio/checkbox filling; controlled-input events; target revalidation; per-field results and verification; partial-failure handling; compare-before-write and conflict handling. The first implementation slice adds a guarded content-side fill primitive and typed message contract; the side-panel review/approval UI and fixture integration remain required before M5 exit.
-**Exit:** side-panel review/approve/edit/skip flow is wired to the content handler; fixtures fill approved fields only; excluded fields stay untouched; stale and conflict cases are reported; no submission occurs.
+**Current implementation:** side-panel review/edit/approve/skip flow is wired to the content handler; approvals are tied to the scanned tab; sensitive metadata is excluded; existing values are preserved unless replacement is explicitly enabled per field; results are shown per field. Radio/checkbox grouping and browser-automated extension E2E remain follow-ups.
+**Exit:** browser fixture tests prove approved fields fill only; unapproved/sensitive fields remain untouched; stale and conflict cases are reported; controlled inputs work in a real browser; no submission occurs.
 
 ## M6 — Document upload
 Detect file inputs; match context/accepted types; select library document; explicit approval; attempt assignment; verify and provide manual fallback.

@@ -35,7 +35,9 @@ Never autofill passwords, OTPs, payment-card, bank-account, or authentication co
 - Never evaluate page-provided strings or execute code received from content.
 - Treat labels, option text, URLs, and metadata as untrusted.
 - Revalidate field references before filling because pages may rerender.
-- M5 fill messages are explicit and carry per-field approval; content-side filling re-queries the current DOM, compares target identity and live values, and never submits.
+- M5 fill messages are explicit and carry per-field approval; the side panel binds approval to the scanned tab/URL, and the content script accepts extension-origin messages only. Content-side filling re-queries the current DOM, compares target identity and live values, and never submits.
+- Sensitive field metadata is filtered during detection. Scan values remain transient in side-panel memory only and are not persisted or logged.
+- Existing values are preserved by default. Replacement is an explicit per-field opt-in and is never enabled by bulk approval.
 - Avoid unsafe HTML insertion.
 
 ## Clipboard

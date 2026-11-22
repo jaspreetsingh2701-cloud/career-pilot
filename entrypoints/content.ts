@@ -7,7 +7,8 @@ import type { TabMessage } from "../src/types/messaging";
 export default defineContentScript({
   matches: ["http://localhost/*", "http://127.0.0.1/*"],
   main() {
-    browser.runtime.onMessage.addListener((message: TabMessage, _sender, sendResponse) => {
+    browser.runtime.onMessage.addListener((message: TabMessage, sender, sendResponse) => {
+      if (sender.id !== browser.runtime.id) return undefined;
       if (message.type === "CAREERPILOT_CONTENT_PING") {
         sendResponse({ ok: true, message: "Connected to the local fixture page." });
         return true;

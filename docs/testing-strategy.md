@@ -43,6 +43,12 @@ Verify detection, matching, option selection, filling, document management, and 
 - Stale target identity is rejected after page changes.
 - Sensitive and unsupported controls are excluded.
 - Native selects accept only an existing enabled option.
+- The side-panel review flow allows edit, per-field approval and skip; no field is filled during scanning.
+- Approvals are bound to the tab and URL that were scanned; switching tabs requires a fresh scan.
+- Sensitive metadata is excluded before mapping and never shown in the review UI.
+- Radio/checkbox controls are detected but cannot be approved until grouped-control semantics are implemented.
+- A local application fixture includes empty, pre-filled, select, textarea, password and OTP controls.
+- No submit event is triggered by the fill engine; manual submission remains the user's action.
 - Verify no form submission event is triggered.
 
 ## Local fixture application
