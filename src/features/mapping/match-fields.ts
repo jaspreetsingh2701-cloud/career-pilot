@@ -67,11 +67,13 @@ function matchOption(value: string, options: DetectedOption[] | undefined): Dete
   const target = normalize(value);
   if (!target) return undefined;
   const enabled = options.filter(option => !option.disabled && normalize(option.label) && normalize(option.value));
-  const exact = enabled.filter(option => normalize(option.label) === target || normalize(option.value) === target);
-  if (exact.length === 1) return exact[0];
-  if (exact.length > 1) return undefined;
-  const partial = enabled.filter(option => includesPhrase(option.label, value) || includesPhrase(value, option.label));
-  return partial.length === 1 ? partial[0] : undefined;
+  const matches = enabled.filter(option =>
+    normalize(option.label) === target ||
+    normalize(option.value) === target ||
+    includesPhrase(option.label, value) ||
+    includesPhrase(value, option.label)
+  );
+  return matches.length === 1 ? matches[0] : undefined;
 }
 
 /** Deterministic suggestions only. This function never changes page elements or approves a mapping. */
