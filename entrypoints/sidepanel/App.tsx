@@ -5,25 +5,25 @@ import { Button } from '../../src/components/common/Button';
 import { SectionHeader } from '../../src/components/common/SectionHeader';
 import { getProfile, saveProfile } from '../../src/features/profile/repository';
 import { emptyProfile, type UserProfile } from '../../src/features/profile/types';
-import { addDocument, clearLibrary, deleteAnswer, deleteDocument, deleteSnippet, listAnswers, listDocuments, listSnippets, saveAnswer, saveSnippet, setDefaultDocument } from '../../src/features/library/database';
+import { addDocument, clearLibrary, deleteAnswer, deleteDocument, deleteSnippet, getDocumentBlob, listAnswers, listDocuments, listSnippets, renameDocument, saveAnswer, saveSnippet, setDefaultDocument } from '../../src/features/library/database';
 import type { CareerDocument, DocumentType, MessageSnippet, SavedAnswer } from '../../src/features/library/types';
 import { createBackup, restoreBackup } from '../../src/features/backup/backup';
 import { getThemePreference, saveThemePreference, type ThemePreference } from '../../src/features/settings/theme';
 
-type Tab = 'profile' | 'documents' | 'answers' | 'settings';
+type Tab = 'documents' | 'profile' | 'answers' | 'settings';
 const inputClass = 'mt-1 min-h-11 w-full rounded-control border border-border-input bg-card px-3 text-sm text-text-primary placeholder:text-text-secondary';
 const labelClass = 'block text-xs font-semibold text-text-secondary';
 const newId = () => crypto.randomUUID();
 
 export default function App() {
-  const [tab, setTab] = useState<Tab>('profile');
+  const [tab, setTab] = useState<Tab>('documents');
   const [profile, setProfile] = useState<UserProfile>(emptyProfile());
   const [documents, setDocuments] = useState<CareerDocument[]>([]);
   const [answers, setAnswers] = useState<SavedAnswer[]>([]);
   const [snippets, setSnippets] = useState<MessageSnippet[]>([]);
   const [theme, setTheme] = useState<ThemePreference>('system');
   const [documentType, setDocumentType] = useState<DocumentType>('resume');
-  const [status, setStatus] = useState('Your information stays on this device.');
+  const [status, setStatus] = useState('');
   const [busy, setBusy] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [clipboardFallback, setClipboardFallback] = useState('');
@@ -48,6 +48,11 @@ export default function App() {
     void Promise.all([getProfile(), getThemePreference()]).then(([p, t]) => { setProfile({ ...p, customFields: p.customFields ?? [] }); setTheme(t); });
     void refreshLibrary();
   }, []);
+  useEffect(() => {
+    if (!status) return;
+    const timeout = window.setTimeout(() => setStatus(''), 3500);
+    return () => window.clearTimeout(timeout);
+  }, [status]);
   useEffect(() => {
     const root = document.documentElement;
     const media = window.matchMedia('(prefers-color-scheme: dark)');
@@ -113,7 +118,7 @@ export default function App() {
           <span className="rounded-full bg-success-bg px-2.5 py-1 text-[11px] font-semibold text-success">Local only</span>
         </div>
         <nav className="mt-4 grid grid-cols-4 gap-1" aria-label="CareerPilot sections">
-          {(['profile', 'documents', 'answers', 'settings'] as Tab[]).map(item => <button key={item} onClick={() => setTab(item)} className={`min-h-10 rounded-control px-1 text-xs font-semibold capitalize ${tab === item ? 'bg-accent text-white' : 'bg-muted text-text-secondary'}`} aria-current={tab === item ? 'page' : undefined}>{item}</button>)}
+          {(['documents', 'profile', 'answers', 'settings'] as Tab[]).map(item => <button key={item} onClick={() => setTab(item)} className={`min-h-10 rounded-control px-1 text-xs font-semibold capitalize ${tab === item ? 'bg-accent text-white' : 'bg-muted text-text-secondary'}`} aria-current={tab === item ? 'page' : undefined}>{item}</button>)}
         </nav>
       </header>
 
@@ -126,7 +131,7 @@ export default function App() {
             <label className={labelClass}>Last name<input className={inputClass} value={profile.lastName} onChange={e => { setProfile({ ...profile, lastName: e.target.value }); setDirty(true); }} /></label>
           </div>
           <label className={`${labelClass} mt-3`}>Email<input type="email" className={inputClass} value={profile.email} onChange={e => { setProfile({ ...profile, email: e.target.value }); setDirty(true); }} /></label>
-          <label className={`${labelClass} mt-3`}>Phone<input className={inputClass} value={profile.phone ?? ''} onChange={e => { setProfile({ ...profile, phone: e.target.value }); setDirty(true); }} /></label>
+          <div className="mt-3 grid grid-cols-[7rem_1fr] gap-2"><label className={labelClass}>Country code<select className={inputClass} value={profile.phoneCountryCode ?? '+91'} onChange={e => { setProfile({ ...profile, phoneCountryCode: e.target.value }); setDirty(true); }}><option value="+91">India (+91)</option><option value="+1">US/Canada (+1)</option><option value="+44">UK (+44)</option><option value="+61">Australia (+61)</option><option value="+971">UAE (+971)</option><option value="+65">Singapore (+65)</option><option value="+49">Germany (+49)</option><option value="+33">France (+33)</option></select></label><label className={labelClass}>Phone number<input type="tel" className={inputClass} value={profile.phone ?? ''} onChange={e => { setProfile({ ...profile, phone: e.target.value }); setDirty(true); }} /></label></div>
           <label className={`${labelClass} mt-3`}>Current location<input className={inputClass} value={profile.currentLocation ?? ''} onChange={e => { setProfile({ ...profile, currentLocation: e.target.value }); setDirty(true); }} /></label>
           <label className={`${labelClass} mt-3`}>Current designation<input className={inputClass} value={profile.currentDesignation ?? ''} onChange={e => { setProfile({ ...profile, currentDesignation: e.target.value }); setDirty(true); }} /></label>
           <label className={`${labelClass} mt-3`}>Current company<input className={inputClass} value={profile.currentCompany ?? ''} onChange={e => { setProfile({ ...profile, currentCompany: e.target.value }); setDirty(true); }} /></label>
@@ -148,12 +153,12 @@ export default function App() {
 
         {tab === 'documents' && <div className="rounded-card border border-border bg-card p-card">
           <SectionHeader title="Document library" count={documents.length} />
-          <p className="mb-3 mt-2 text-xs leading-5 text-text-secondary">Import PDF, DOC or DOCX files up to 5 MB. Files are stored in this browser only.</p>
+          <p className="mb-3 mt-2 text-xs leading-5 text-text-secondary">Add your resume and cover letter here first. When completing an application, choose a document to attach, then fill the remaining fields from your profile. Uploading a document does not change your profile. PDF, DOC or DOCX up to 5 MB; stored in this browser only.</p>
           <label className={labelClass}>Document type<select className={inputClass} value={documentType} onChange={e => setDocumentType(e.target.value as DocumentType)}><option value="resume">Resume</option><option value="cover-letter">Cover letter</option><option value="other">Other</option></select></label><label className="mt-3 block text-xs font-semibold text-text-secondary">Import document<input type="file" accept=".pdf,.doc,.docx" disabled={uploading} onChange={uploadDocument} className="mt-2 block w-full text-xs file:mr-2 file:min-h-10 file:rounded-control file:border-0 file:bg-accent file:px-3 file:text-white" /></label>
           {uploading && <p className="mt-2 text-xs text-accent" role="status">Uploading selected document…</p>}
           <div className="mt-4 space-y-2">{documents.map(doc => <div key={doc.id} className="rounded-control border border-border p-3">
             <div className="flex items-start justify-between gap-2"><div className="min-w-0"><p className="break-words text-xs font-semibold">{doc.name}</p><p className="mt-1 text-[11px] text-text-secondary">{doc.fileName} · {(doc.sizeBytes / 1024).toFixed(0)} KB</p></div>{doc.isDefault && <span className="shrink-0 rounded-full bg-success-bg px-2 py-1 text-[10px] font-semibold text-success">Default</span>}</div>
-            <div className="mt-2 flex gap-2">{doc.type !== 'other' && !doc.isDefault && <button className="text-xs font-semibold text-accent" onClick={async () => { await setDefaultDocument(doc.id, doc.type); await refreshLibrary(); }}>Set default</button>}<button className="text-xs font-semibold text-danger" onClick={async () => { if (window.confirm('Delete this document?')) { await deleteDocument(doc.id); await refreshLibrary(); } }}>Delete</button></div>
+            <div className="mt-2 flex flex-wrap gap-3"><button className="text-xs font-semibold text-accent" onClick={async () => { const name = window.prompt('Rename document', doc.name); if (name?.trim()) { await renameDocument(doc.id, name.trim()); await refreshLibrary(); setStatus('Document renamed.'); } }}>Rename</button><button className="text-xs font-semibold text-accent" onClick={async () => { const blob = await getDocumentBlob(doc.id); if (!blob) { setStatus('Document file could not be found.'); return; } const url = URL.createObjectURL(blob); const link = document.createElement('a'); link.href = url; link.download = doc.fileName; link.click(); window.setTimeout(() => URL.revokeObjectURL(url), 1000); }}>Download</button>{doc.type !== 'other' && !doc.isDefault && <button className="text-xs font-semibold text-accent" onClick={async () => { await setDefaultDocument(doc.id, doc.type); await refreshLibrary(); }}>Set default</button>}<button className="text-xs font-semibold text-danger" onClick={async () => { if (window.confirm('Delete this document?')) { await deleteDocument(doc.id); await refreshLibrary(); } }}>Delete</button></div>
           </div>)}</div>
           {documents.length === 0 && <p className="mt-4 text-xs text-text-secondary">No documents yet. Import your first resume or cover letter.</p>}
         </div>}
@@ -165,7 +170,7 @@ export default function App() {
             <label className={`${labelClass} mt-3`}>Answer<textarea className={`${inputClass} min-h-24 py-2`} value={answerBody} onChange={e => setAnswerBody(e.target.value)} /></label>
             <Button className="mt-3 w-full" onClick={addSavedAnswer}>{answerEditingId ? 'Update saved answer' : 'Add saved answer'}</Button>
             {answerEditingId && <button className="mt-2 text-xs font-semibold text-text-secondary" onClick={() => { setAnswerEditingId(null); setAnswerTitle(''); setAnswerBody(''); }}>Cancel editing</button>}
-            <div className="mt-3 space-y-2">{answers.map(item => <div key={item.id} className="rounded-control border border-border p-3"><p className="text-xs font-semibold">{item.title}</p><p className="mt-1 whitespace-pre-wrap text-xs text-text-secondary">{item.answer}</p><div className="mt-2 flex gap-3"><button className="text-xs font-semibold text-accent" onClick={() => void copyText(item.answer, 'Saved answer')}>Copy</button><button className="text-xs font-semibold text-accent" onClick={() => { setAnswerEditingId(item.id); setAnswerTitle(item.title); setAnswerBody(item.answer); }}>Edit</button><button className="text-xs font-semibold text-danger" onClick={async () => { await deleteAnswer(item.id); await refreshLibrary(); setStatus('Saved answer deleted.'); }}>Delete</button></div></div>)}</div>
+            <div className="mt-3 overflow-hidden rounded-control border border-border"><table className="w-full table-fixed text-left text-xs"><thead className="bg-muted text-text-secondary"><tr><th className="w-[27%] px-2 py-2 font-semibold">Title</th><th className="px-2 py-2 font-semibold">Answer</th><th className="w-[6.5rem] px-2 py-2 font-semibold">Actions</th></tr></thead><tbody>{answers.map(item => <tr key={item.id} className="border-t border-border"><td className="truncate px-2 py-2 font-semibold" title={item.title}>{item.title}</td><td className="truncate px-2 py-2 text-text-secondary" title={item.answer}>{item.answer}</td><td className="px-2 py-2"><div className="flex flex-wrap gap-x-2 gap-y-1"><button className="font-semibold text-accent" onClick={() => void copyText(item.answer, 'Saved answer')}>Copy</button><button className="font-semibold text-accent" onClick={() => { setAnswerEditingId(item.id); setAnswerTitle(item.title); setAnswerBody(item.answer); }}>Edit</button><button className="font-semibold text-danger" onClick={async () => { await deleteAnswer(item.id); await refreshLibrary(); setStatus('Saved answer deleted.'); }}>Delete</button></div></td></tr>)}</tbody></table>{answers.length === 0 && <p className="p-3 text-xs text-text-secondary">No saved answers yet.</p>}</div>
           </div>
           <div className="rounded-card border border-border bg-card p-card">
             <SectionHeader title="Message snippets" count={snippets.length} />
@@ -223,7 +228,7 @@ export default function App() {
           </div>
         </div>}
         {clipboardFallback && <textarea aria-label="Text ready for manual copying" readOnly value={clipboardFallback} onFocus={event => event.currentTarget.select()} className={`${inputClass} min-h-24 py-2`} />}
-        <p className="sticky bottom-2 rounded-control border border-border bg-card p-3 text-xs font-medium text-text-primary shadow-sm" role="status" aria-live="polite">{status}</p>
+        {status && <p className="fixed bottom-16 right-4 z-50 max-w-[min(22rem,calc(100vw-2rem))] rounded-control border border-border bg-card px-4 py-3 text-xs font-medium text-text-primary shadow-lg" role="status" aria-live="polite">{status}</p>}
       </section>
       <footer className="border-t border-border bg-card px-panel py-3 text-center text-[11px] text-text-secondary">You stay in control · Review every suggestion · Submit manually</footer>
     </main>
