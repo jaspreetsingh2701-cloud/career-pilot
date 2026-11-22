@@ -84,7 +84,7 @@ career-pilot/
 ```
 
 ## Permissions
-Start with the minimum permissions needed. Likely candidates include storage, sidePanel, activeTab, and scripting, subject to implementation. Prefer user-initiated active-tab access; avoid broad all-sites host permissions unless justified. Review generated manifest permissions before release.
+Start with the minimum permissions needed. Likely candidates include storage, sidePanel, activeTab, scripting, and clipboardWrite (for copy), subject to implementation. Prefer user-initiated active-tab access; avoid broad all-sites host permissions unless justified. Review generated manifest permissions before release.
 
 ## Detection and mapping pipeline
 Extract field identity/type, label, name/id, placeholder, accessible description, examples/helper text, group context, required/disabled/read-only/hidden state, and native option lists. Filter search/navigation, authentication, sensitive, hidden, and unrelated controls.
@@ -100,5 +100,11 @@ Start with text, email, tel, URL, number, textarea, native select, radio, checkb
 ## Document upload limitations
 Store Blob content in IndexedDB. The user explicitly selects a library document and approves its assignment. Programmatic assignment to input.files may work for standard inputs but is not universally accepted by portals/custom uploaders. Verify when possible and offer manual upload fallback.
 
+## Clipboard
+Copy runs in the side panel on a user click, using navigator.clipboard.writeText with plain text (normalize CRLF to LF, no trimming of blank lines or spaces). No content script is involved and nothing is inserted into any page. Add the clipboardWrite permission only if testing shows it is needed. Fallback: show the text selected in a read-only box for manual copy.
+
+## Pre-filled forms
+Some sites fill fields after a resume upload or social sign-in. Scan captures each field's current value (in memory only) and classifies it: empty or placeholder (fillable), already matching the profile (skip, "Already filled"), or different (conflict, default Keep). Before writing, the content script re-reads the live value and skips the field if it changed since the scan. Sign-in flows stay out of scope; CareerPilot works on the form after the user returns to it.
+
 ## Failure states
-Distinguish detected/not detected; suggested/needs review/no safe match; filled/skipped/failed/verification unavailable; upload assigned/unsupported/failed/manual action required. One field failure must not block independent approved fields.
+Distinguish detected/not detected; suggested/needs review/no safe match; filled/skipped/skipped (already filled)/changed since scan/failed/verification unavailable; upload assigned/unsupported/failed/manual action required. One field failure must not block independent approved fields.

@@ -12,13 +12,16 @@ Job seekers repeatedly enter contact, experience, compensation, availability, an
 - Explainable: show match evidence and confidence; do not silently guess.
 - Conservative: ambiguous or unsupported fields remain untouched.
 - No auto-submit: the user reviews and submits the application.
+- Never overwrite: values already on the page (typed by the user, parsed from a resume, or imported by the site) are kept unless the user explicitly replaces them per field.
 - Minimal permissions and data collection.
 
 ## Functional requirements
 
 ### FR-01 Candidate profile
 - Create, view, edit, and clear a local profile.
-- Support name, contact details, experience, current role/company, compensation, notice period, location, and professional links.
+- Support name, contact details, experience, current role/company, compensation (with currency), notice period, location, and professional links.
+- Support education entries, employment history entries, skills, languages, and job preferences (preferred role, work mode, willingness to relocate, notice-period negotiability).
+- Store phone with country code; keep user-entered wording for compensation and notice period.
 - Keep optional values optional; never fabricate missing information.
 
 ### FR-02 Document library
@@ -51,6 +54,7 @@ Prioritize application forms; ignore unrelated search/navigation controls and ex
 - Consider labels, names, IDs, placeholders, examples, helper text, ARIA metadata, and nearby context.
 - Show proposed source/value, confidence, and evidence.
 - Allow manual mapping, editing, and skipping.
+- Scale to large forms (dozens of fields): group by form section, filter by status, show an approved-of-total progress count, and offer per-section and global "approve all ready". Conflicts, no-match and excluded fields are never included in bulk approval.
 - Do not fill ambiguous or unsafe matches.
 
 ### FR-06 Dropdown and option selection
@@ -66,6 +70,11 @@ Prioritize application forms; ignore unrelated search/navigation controls and ex
 - Preview proposed field/value pairs.
 - User can approve individually or in bulk, edit, or skip.
 - Fill only approved fields and verify results where possible.
+- Fill only empty fields by default. Treat placeholder states (e.g. a select on "Select...") as empty.
+- Skip fields whose current value already matches the profile (normalized) and report "Already filled".
+- Show a conflict when the page holds a different value ("Site has X, profile has Y"). Default action is Keep; Replace is a separate per-field choice and is excluded from bulk approval.
+- Re-read each field's live value immediately before writing; skip and report if it is no longer empty or changed since the scan.
+- Sites may populate fields after a resume upload or social sign-in. Advise scanning after the form settles and show a "form changed, re-scan" notice when the page keeps mutating.
 - Exclude passwords, OTPs, payment/bank fields, and other sensitive controls.
 - Never click submit or submit forms.
 
@@ -85,6 +94,23 @@ Prioritize application forms; ignore unrelated search/navigation controls and ex
 - Disclose what is stored and where.
 - Do not transmit personal or document data remotely in the MVP.
 
+### FR-11 Backup and restore
+- Export profile, saved answers, preferences, history and documents (including file content) to a single local file.
+- Import validates schema version and file types/sizes; show a summary and require confirmation before overwriting existing data.
+- No network transfer; the file is saved to the user's device.
+
+### FR-12 First-run onboarding
+- Explain the privacy model, collect minimum profile fields, optionally import a first resume.
+- Detection is unavailable until the minimum profile exists, with a clear explanation.
+
+### FR-13 Message snippets and clipboard
+- Create, edit, tag and delete reusable messages (e.g. LinkedIn connection note, referral request, follow-up, recruiter reply).
+- Optional placeholders such as {{recipient_name}} and {{company}}, filled in a small form before copying.
+- "Copy" places the final text on the clipboard as plain text with line breaks, blank lines, spacing and emoji preserved exactly; no HTML or rich formatting.
+- Show a live preview, character count and paragraph count, with an optional per-snippet length limit (for example for connection notes). Limits are user-editable because sites change them.
+- Confirm with a visible "Copied" state; if the browser blocks clipboard access, show a select-all text fallback.
+- CareerPilot only copies. It never types, pastes, posts or sends messages on LinkedIn or any other site.
+
 ## Non-functional requirements
 - Privacy: no backend, cloud sync, remote LLM, or personal-data telemetry.
 - Security: validate file types/sizes, validate messages, safely render untrusted text.
@@ -92,9 +118,10 @@ Prioritize application forms; ignore unrelated search/navigation controls and ex
 - Usability/accessibility: keyboard-operable UI, visible focus, clear status and error feedback.
 - Maintainability: isolate detection, mapping, filling, storage, and UI logic.
 - Performance: keep scanning/mapping responsive on typical application forms.
+- Internationalization: validate phone formats with country code; ambiguous dates are shown in the user's own wording.
 
 ## Out of scope
-AI answer generation, JD analysis/resume scoring, cloud accounts/sync, backend, automatic submission, CAPTCHA/access-control bypass, authentication automation, guaranteed support for every portal/iframe/shadow DOM/custom widget, mass application automation.
+AI answer generation, JD analysis/resume scoring, cloud accounts/sync, backend, automatic submission, CAPTCHA/access-control bypass, authentication automation, guaranteed support for every portal/iframe/shadow DOM/custom widget (same-origin iframes and open shadow DOM are a post-MVP spike), mass application automation.
 
 ## Acceptance criteria
 1. Profile persists across reloads and can be edited/deleted.
@@ -105,9 +132,17 @@ AI answer generation, JD analysis/resume scoring, cloud accounts/sync, backend, 
 6. Approved text/select/radio/checkbox fields fill without submitting.
 7. File upload succeeds on supported fixtures or reports a clear fallback.
 8. All user data remains local and can be cleared.
+9. A backup file can be exported and restored on a clean profile with identical data.
+10. First-run onboarding completes with only name and email provided.
+11. Pre-filled fields are never overwritten without per-field opt-in; changed or filled fields are skipped and reported.
+12. A snippet copied from CareerPilot pastes into LinkedIn and a plain-text editor with identical line breaks and blank lines; placeholders are replaced and unfilled ones are flagged before copying.
 
 ## Confirmed decisions
 CareerPilot name; Chrome Manifest V3; local-only MVP; no AI/backend/cloud; multiple documents; metadata-aware detection and option matching; user approval; no auto-submit.
 
-## To validate
-Supported file formats and size limits, exact profile schema, application-history opt-in behavior, minimum Chrome version, and backup/export format.
+## To validate (proposed defaults, confirm before M2)
+- File formats: PDF, DOC, DOCX; max 5 MB per file.
+- Profile schema: as in the data model, extended with education, employment history, skills, languages, preferences.
+- Application history: recorded only when the user chooses; default is off.
+- Minimum Chrome version: decide after confirming side panel API support during M1.
+- Backup format: versioned JSON with documents embedded as base64 (or a zip if size becomes a problem).
