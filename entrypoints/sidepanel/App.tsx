@@ -25,6 +25,14 @@ export default function App() {
   const [documentType, setDocumentType] = useState<DocumentType>('resume');
   const [status, setStatus] = useState('Your information stays on this device.');
   const [busy, setBusy] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [dirty, setDirty] = useState(false);
+  const [answerEditingId, setAnswerEditingId] = useState<string | null>(null);
+  const [customLabel, setCustomLabel] = useState('');
+  const [customValue, setCustomValue] = useState('');
+  const [customType, setCustomType] = useState<'text' | 'number' | 'date' | 'url' | 'textarea'>('text');
+  const [customAliases, setCustomAliases] = useState('');
+  const [customSection, setCustomSection] = useState('Additional');
   const [answerTitle, setAnswerTitle] = useState('');
   const [answerBody, setAnswerBody] = useState('');
   const [snippetTitle, setSnippetTitle] = useState('');
@@ -35,7 +43,7 @@ export default function App() {
     setDocuments(docs); setAnswers(savedAnswers); setSnippets(savedSnippets);
   }
   useEffect(() => {
-    void Promise.all([getProfile(), getThemePreference()]).then(([p, t]) => { setProfile(p); setTheme(t); });
+    void Promise.all([getProfile(), getThemePreference()]).then(([p, t]) => { setProfile({ ...p, customFields: p.customFields ?? [] }); setTheme(t); });
     void refreshLibrary();
   }, []);
   useEffect(() => {
@@ -49,24 +57,37 @@ export default function App() {
 
   async function persistProfile() {
     setBusy(true);
-    try { setProfile(await saveProfile(profile)); setStatus('Profile saved locally.'); }
-    catch { setStatus('Could not save your profile. Please try again.'); }
+    try { setProfile(await saveProfile(profile)); setDirty(false); setStatus('Profile saved successfully on this device.'); }
+    catch (error) { setStatus(error instanceof Error ? `Profile save failed: ${error.message}` : 'Profile save failed. Please try again.'); }
     finally { setBusy(false); }
   }
   async function uploadDocument(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
     if (!file) return;
+    setUploading(true);
+    setStatus(`Importing ${file.name}…`);
     try {
-      await addDocument(file, file.name.toLowerCase().endsWith('pdf') || /\.(doc|docx)$/i.test(file.name) ? (tab === 'documents' ? 'resume' : 'other') : 'other');
-      await refreshLibrary(); setStatus('Document imported to local storage.');
-    } catch (error) { setStatus(error instanceof Error ? error.message : 'Document import failed.'); }
-    event.target.value = '';
+      await addDocument(file, documentType);
+      await refreshLibrary(); setStatus(`${file.name} uploaded successfully (${(file.size / 1024).toFixed(0)} KB).`);
+    } catch (error) { setStatus(error instanceof Error ? `Upload failed: ${error.message}` : 'Document import failed.'); }
+    finally { setUploading(false); event.target.value = ''; }
   }
   async function addSavedAnswer() {
-    if (!answerTitle.trim() || !answerBody.trim()) return;
+    if (!answerTitle.trim() || !answerBody.trim()) { setStatus('Enter both a title and an answer.'); return; }
     const now = Date.now();
-    await saveAnswer({ id: newId(), title: answerTitle.trim(), answer: answerBody, keywords: [], createdAt: now, updatedAt: now });
-    setAnswerTitle(''); setAnswerBody(''); await refreshLibrary(); setStatus('Saved answer added.');
+    const existing = answers.find(item => item.id === answerEditingId);
+    await saveAnswer({ id: existing?.id ?? newId(), title: answerTitle.trim(), answer: answerBody, keywords: existing?.keywords ?? [], category: existing?.category, createdAt: existing?.createdAt ?? now, updatedAt: now });
+    setAnswerTitle(''); setAnswerBody(''); setAnswerEditingId(null); await refreshLibrary(); setStatus(existing ? 'Saved answer updated.' : 'Saved answer added.');
+  }
+  async function copyText(value: string, label: string) {
+    try { await navigator.clipboard.writeText(value); setStatus(`${label} copied to clipboard.`); }
+    catch { setStatus('Clipboard access was blocked. Select the text and copy it manually.'); }
+  }
+  function addCustomField() {
+    if (!customLabel.trim() || !customValue.trim()) { setStatus('Add a label and value for the custom field.'); return; }
+    const field = { id: newId(), key: `custom_${newId().replace(/-/g, '')}`, label: customLabel.trim(), value: customValue, type: customType, section: customSection.trim() || 'Additional', aliases: customAliases.split(',').map(value => value.trim()).filter(Boolean) };
+    setProfile(current => ({ ...current, customFields: [...(current.customFields ?? []), field] }));
+    setDirty(true); setCustomLabel(''); setCustomValue(''); setCustomAliases(''); setStatus('Custom field added. Save your profile to keep it.');
   }
   async function addMessageSnippet() {
     if (!snippetTitle.trim() || !snippetBody.trim()) return;
@@ -98,22 +119,34 @@ export default function App() {
           <SectionHeader title="Candidate profile" />
           <p className="mb-4 mt-2 text-xs leading-5 text-text-secondary">Add only information you want to reuse in job applications. Optional fields can stay empty.</p>
           <div className="grid grid-cols-2 gap-3">
-            <label className={labelClass}>First name<input className={inputClass} value={profile.firstName} onChange={e => setProfile({ ...profile, firstName: e.target.value })} /></label>
-            <label className={labelClass}>Last name<input className={inputClass} value={profile.lastName} onChange={e => setProfile({ ...profile, lastName: e.target.value })} /></label>
+            <label className={labelClass}>First name<input className={inputClass} value={profile.firstName} onChange={e => setProfile({ ...profile, firstName: e.target.value }); setDirty(true)} /></label>
+            <label className={labelClass}>Last name<input className={inputClass} value={profile.lastName} onChange={e => setProfile({ ...profile, lastName: e.target.value }); setDirty(true)} /></label>
           </div>
-          <label className={`${labelClass} mt-3`}>Email<input type="email" className={inputClass} value={profile.email} onChange={e => setProfile({ ...profile, email: e.target.value })} /></label>
-          <label className={`${labelClass} mt-3`}>Phone<input className={inputClass} value={profile.phone ?? ''} onChange={e => setProfile({ ...profile, phone: e.target.value })} /></label>
-          <label className={`${labelClass} mt-3`}>Current location<input className={inputClass} value={profile.currentLocation ?? ''} onChange={e => setProfile({ ...profile, currentLocation: e.target.value })} /></label>
-          <label className={`${labelClass} mt-3`}>Current designation<input className={inputClass} value={profile.currentDesignation ?? ''} onChange={e => setProfile({ ...profile, currentDesignation: e.target.value })} /></label>
-          <label className={`${labelClass} mt-3`}>Current company<input className={inputClass} value={profile.currentCompany ?? ''} onChange={e => setProfile({ ...profile, currentCompany: e.target.value })} /></label>
-          <label className={`${labelClass} mt-3`}>Preferred role<input className={inputClass} value={profile.preferredRole ?? ''} onChange={e => setProfile({ ...profile, preferredRole: e.target.value })} /></label>
-          <Button className="mt-4 w-full" onClick={persistProfile} disabled={busy || !profile.firstName.trim() || !profile.email.trim()}>{busy ? 'Saving…' : 'Save profile'}</Button>
+          <label className={`${labelClass} mt-3`}>Email<input type="email" className={inputClass} value={profile.email} onChange={e => setProfile({ ...profile, email: e.target.value }); setDirty(true)} /></label>
+          <label className={`${labelClass} mt-3`}>Phone<input className={inputClass} value={profile.phone ?? ''} onChange={e => setProfile({ ...profile, phone: e.target.value }); setDirty(true)} /></label>
+          <label className={`${labelClass} mt-3`}>Current location<input className={inputClass} value={profile.currentLocation ?? ''} onChange={e => setProfile({ ...profile, currentLocation: e.target.value }); setDirty(true)} /></label>
+          <label className={`${labelClass} mt-3`}>Current designation<input className={inputClass} value={profile.currentDesignation ?? ''} onChange={e => setProfile({ ...profile, currentDesignation: e.target.value }); setDirty(true)} /></label>
+          <label className={`${labelClass} mt-3`}>Current company<input className={inputClass} value={profile.currentCompany ?? ''} onChange={e => setProfile({ ...profile, currentCompany: e.target.value }); setDirty(true)} /></label>
+          <label className={`${labelClass} mt-3`}>Preferred role<input className={inputClass} value={profile.preferredRole ?? ''} onChange={e => setProfile({ ...profile, preferredRole: e.target.value }); setDirty(true)} /></label>
+          <div className="mt-4 rounded-control bg-muted p-3 text-xs text-text-secondary">{dirty ? 'You have unsaved profile changes.' : 'Your profile is saved locally.'} {!profile.firstName.trim() || !profile.email.trim() ? 'First name and email are required to save.' : ''}</div>
+          <Button className="mt-2 w-full" onClick={persistProfile} disabled={busy || !dirty || !profile.firstName.trim() || !profile.email.trim()}>{busy ? 'Saving…' : dirty ? 'Save profile' : 'Saved'}</Button>
+          <div className="mt-5 border-t border-border pt-4"><SectionHeader title="Custom profile fields" />
+            <p className="mt-2 text-xs leading-5 text-text-secondary">Add information that is not in the standard profile. Labels and aliases help CareerPilot recognize differently worded application fields.</p>
+            <label className={`${labelClass} mt-3`}>Field label<input className={inputClass} value={customLabel} onChange={e => setCustomLabel(e.target.value)} placeholder="e.g. Current CTC" /></label>
+            <label className={`${labelClass} mt-3`}>Value<input className={inputClass} value={customValue} onChange={e => setCustomValue(e.target.value)} placeholder="e.g. 41 LPA" /></label>
+            <label className={`${labelClass} mt-3`}>Value type<select className={inputClass} value={customType} onChange={e => setCustomType(e.target.value as typeof customType)}><option value="text">Text</option><option value="number">Number</option><option value="date">Date</option><option value="url">URL</option><option value="textarea">Long text</option></select></label>
+            <label className={`${labelClass} mt-3`}>Aliases (comma separated)<input className={inputClass} value={customAliases} onChange={e => setCustomAliases(e.target.value)} placeholder="current salary, present CTC" /></label>
+            <label className={`${labelClass} mt-3`}>Section<input className={inputClass} value={customSection} onChange={e => setCustomSection(e.target.value)} /></label>
+            <Button className="mt-3 w-full" variant="secondary" onClick={addCustomField}>Add custom field</Button>
+            <div className="mt-3 space-y-2">{(profile.customFields ?? []).map(field => <div key={field.id} className="rounded-control border border-border p-3"><p className="text-xs font-semibold">{field.label}</p><p className="mt-1 whitespace-pre-wrap text-xs text-text-secondary">{field.value}</p><p className="mt-1 text-[11px] text-text-secondary">{field.section} · {field.aliases.join(', ') || 'No aliases'}</p><button className="mt-2 text-xs font-semibold text-danger" onClick={() => { setProfile(current => ({ ...current, customFields: (current.customFields ?? []).filter(item => item.id !== field.id) })); setDirty(true); }}>Remove</button></div>)}</div>
+          </div>
         </div>}
 
         {tab === 'documents' && <div className="rounded-card border border-border bg-card p-card">
           <SectionHeader title="Document library" count={documents.length} />
           <p className="mb-3 mt-2 text-xs leading-5 text-text-secondary">Import PDF, DOC or DOCX files up to 5 MB. Files are stored in this browser only.</p>
-          <label className={labelClass}>Document type<select className={inputClass} value={documentType} onChange={e => setDocumentType(e.target.value as DocumentType)}><option value="resume">Resume</option><option value="cover-letter">Cover letter</option><option value="other">Other</option></select></label><label className="mt-3 block text-xs font-semibold text-text-secondary">Import document<input type="file" accept=".pdf,.doc,.docx" onChange={uploadDocument} className="mt-2 block w-full text-xs file:mr-2 file:min-h-10 file:rounded-control file:border-0 file:bg-accent file:px-3 file:text-white" /></label>
+          <label className={labelClass}>Document type<select className={inputClass} value={documentType} onChange={e => setDocumentType(e.target.value as DocumentType)}><option value="resume">Resume</option><option value="cover-letter">Cover letter</option><option value="other">Other</option></select></label><label className="mt-3 block text-xs font-semibold text-text-secondary">Import document<input type="file" accept=".pdf,.doc,.docx" disabled={uploading} onChange={uploadDocument} className="mt-2 block w-full text-xs file:mr-2 file:min-h-10 file:rounded-control file:border-0 file:bg-accent file:px-3 file:text-white" /></label>
+          {uploading && <p className="mt-2 text-xs text-accent" role="status">Uploading selected document…</p>}
           <div className="mt-4 space-y-2">{documents.map(doc => <div key={doc.id} className="rounded-control border border-border p-3">
             <div className="flex items-start justify-between gap-2"><div className="min-w-0"><p className="break-words text-xs font-semibold">{doc.name}</p><p className="mt-1 text-[11px] text-text-secondary">{doc.fileName} · {(doc.sizeBytes / 1024).toFixed(0)} KB</p></div>{doc.isDefault && <span className="shrink-0 rounded-full bg-success-bg px-2 py-1 text-[10px] font-semibold text-success">Default</span>}</div>
             <div className="mt-2 flex gap-2">{doc.type !== 'other' && !doc.isDefault && <button className="text-xs font-semibold text-accent" onClick={async () => { await setDefaultDocument(doc.id, doc.type); await refreshLibrary(); }}>Set default</button>}<button className="text-xs font-semibold text-danger" onClick={async () => { if (window.confirm('Delete this document?')) { await deleteDocument(doc.id); await refreshLibrary(); } }}>Delete</button></div>
@@ -126,15 +159,16 @@ export default function App() {
             <SectionHeader title="Saved answers" count={answers.length} />
             <label className={`${labelClass} mt-3`}>Title<input className={inputClass} value={answerTitle} onChange={e => setAnswerTitle(e.target.value)} placeholder="e.g. Why are you interested?" /></label>
             <label className={`${labelClass} mt-3`}>Answer<textarea className={`${inputClass} min-h-24 py-2`} value={answerBody} onChange={e => setAnswerBody(e.target.value)} /></label>
-            <Button className="mt-3 w-full" onClick={addSavedAnswer}>Add saved answer</Button>
-            <div className="mt-3 space-y-2">{answers.map(item => <div key={item.id} className="rounded-control border border-border p-3"><p className="text-xs font-semibold">{item.title}</p><p className="mt-1 whitespace-pre-wrap text-xs text-text-secondary">{item.answer}</p><button className="mt-2 text-xs font-semibold text-danger" onClick={async () => { await deleteAnswer(item.id); await refreshLibrary(); }}>Delete</button></div>)}</div>
+            <Button className="mt-3 w-full" onClick={addSavedAnswer}>{answerEditingId ? 'Update saved answer' : 'Add saved answer'}</Button>
+            {answerEditingId && <button className="mt-2 text-xs font-semibold text-text-secondary" onClick={() => { setAnswerEditingId(null); setAnswerTitle(''); setAnswerBody(''); }}>Cancel editing</button>}
+            <div className="mt-3 space-y-2">{answers.map(item => <div key={item.id} className="rounded-control border border-border p-3"><p className="text-xs font-semibold">{item.title}</p><p className="mt-1 whitespace-pre-wrap text-xs text-text-secondary">{item.answer}</p><div className="mt-2 flex gap-3"><button className="text-xs font-semibold text-accent" onClick={() => void copyText(item.answer, 'Saved answer')}>Copy</button><button className="text-xs font-semibold text-accent" onClick={() => { setAnswerEditingId(item.id); setAnswerTitle(item.title); setAnswerBody(item.answer); }}>Edit</button><button className="text-xs font-semibold text-danger" onClick={async () => { await deleteAnswer(item.id); await refreshLibrary(); setStatus('Saved answer deleted.'); }}>Delete</button></div></div>)}</div>
           </div>
           <div className="rounded-card border border-border bg-card p-card">
             <SectionHeader title="Message snippets" count={snippets.length} />
             <label className={`${labelClass} mt-3`}>Title<input className={inputClass} value={snippetTitle} onChange={e => setSnippetTitle(e.target.value)} placeholder="e.g. Recruiter follow-up" /></label>
             <label className={`${labelClass} mt-3`}>Message<textarea className={`${inputClass} min-h-24 py-2`} value={snippetBody} onChange={e => setSnippetBody(e.target.value)} /></label>
             <Button className="mt-3 w-full" onClick={addMessageSnippet}>Add snippet</Button>
-            <div className="mt-3 space-y-2">{snippets.map(item => <div key={item.id} className="rounded-control border border-border p-3"><p className="text-xs font-semibold">{item.title}</p><p className="mt-1 whitespace-pre-wrap text-xs text-text-secondary">{item.body}</p><div className="mt-2 flex gap-3"><button className="text-xs font-semibold text-accent" onClick={() => void navigator.clipboard.writeText(item.body).then(() => setStatus('Snippet copied as plain text.')).catch(() => setStatus('Clipboard unavailable in this context.'))}>Copy</button><button className="text-xs font-semibold text-danger" onClick={async () => { await deleteSnippet(item.id); await refreshLibrary(); }}>Delete</button></div></div>)}</div>
+            <div className="mt-3 space-y-2">{snippets.map(item => <div key={item.id} className="rounded-control border border-border p-3"><p className="text-xs font-semibold">{item.title}</p><p className="mt-1 whitespace-pre-wrap text-xs text-text-secondary">{item.body}</p><div className="mt-2 flex gap-3"><button className="text-xs font-semibold text-accent" onClick={() => void copyText(item.body, 'Message snippet')}>Copy</button><button className="text-xs font-semibold text-danger" onClick={async () => { await deleteSnippet(item.id); await refreshLibrary(); }}>Delete</button></div></div>)}</div>
           </div>
         </div>}
 
@@ -184,7 +218,7 @@ export default function App() {
             <Button variant="danger" className="mt-3 w-full" onClick={() => void clearAll()}>Clear all local data</Button>
           </div>
         </div>}
-        <p className="rounded-control bg-muted p-3 text-xs text-text-secondary" role="status" aria-live="polite">{status}</p>
+        <p className="sticky bottom-2 rounded-control border border-border bg-card p-3 text-xs font-medium text-text-primary shadow-sm" role="status" aria-live="polite">{status}</p>
       </section>
       <footer className="border-t border-border bg-card px-panel py-3 text-center text-[11px] text-text-secondary">You stay in control · Review every suggestion · Submit manually</footer>
     </main>
