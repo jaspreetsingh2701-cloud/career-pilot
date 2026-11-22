@@ -29,12 +29,13 @@ Job seekers repeatedly enter contact, experience, compensation, availability, an
 - Custom profile fields are included in local backup/restore and remain compatible with older backups that do not contain them.
 
 ### FR-02 Document library
-- Import and store multiple resumes and cover letters locally.
+- Import and store multiple resumes and cover letters locally. Documents is the first section in the side panel and the starting point for application preparation.
 - Rename, categorize, replace, and delete documents.
 - Mark a default resume and default cover letter independently.
 - Support role-specific variants (e.g. frontend engineer, engineering lead).
 - Select a specific resume and cover letter per application.
 - Show selected file names before attempting upload; require explicit user approval.
+- Application workflow: choose/attach the resume first, then review and fill remaining application fields from the saved profile and answers. Resume upload never extracts into or modifies the profile.
 
 ### FR-03 Saved answers
 - Create, edit, and delete reusable answers to common application questions.
@@ -145,6 +146,8 @@ AI answer generation, JD analysis/resume scoring, cloud accounts/sync, backend, 
 14. Resume and cover-letter imports preserve the selected document type; each type can have its own independent default.
 15. Upload, save, copy, and validation actions provide visible, accessible status feedback; profile save state distinguishes saving, saved, and unsaved changes.
 16. Saved answers can be copied, edited, and deleted.
+17. Documents is the first side-panel section; users can rename and download imported files without changing the original filename or file content.
+18. Resume attachment and profile-field autofill are distinct user-approved steps; importing a resume never modifies profile data.
 
 ## Confirmed decisions
 CareerPilot name; Chrome Manifest V3; local-only MVP; no AI/backend/cloud; multiple documents; metadata-aware detection and option matching; user approval; no auto-submit.

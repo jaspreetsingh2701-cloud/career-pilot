@@ -52,6 +52,26 @@ export async function addDocument(file: File, type: DocumentType, targetRole?: s
 export async function getDocumentBlob(id: string): Promise<Blob | undefined> {
   return withStore(BLOBS, 'readonly', store => store.get(id));
 }
+export async function renameDocument(id: string, name: string): Promise<void> {
+  const cleanName = name.trim();
+  if (!cleanName) throw new Error('Document name cannot be empty.');
+  const db = await openDatabase();
+  try {
+    const tx = db.transaction(DOCS, 'readwrite');
+    const store = tx.objectStore(DOCS);
+    const request = store.get(id);
+    request.onsuccess = () => {
+      const current = request.result as CareerDocument | undefined;
+      if (!current) { tx.abort(); return; }
+      store.put({ ...current, name: cleanName, updatedAt: Date.now() });
+    };
+    await new Promise<void>((resolve, reject) => {
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+      tx.onabort = () => reject(tx.error ?? new Error('Document rename failed.'));
+    });
+  } finally { db.close(); }
+}
 export async function setDefaultDocument(id: string, type: DocumentType): Promise<void> {
   const docs = await listDocuments();
   const db = await openDatabase();
