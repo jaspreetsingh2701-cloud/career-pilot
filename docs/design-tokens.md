@@ -1,6 +1,6 @@
 # Design Tokens and UI Decisions
 
-Source: side-panel mockup (Mapping review and Document library screens). Treat these values as the starting point and adjust during M1.
+Source: side-panel mockup (Mapping review and Document library screens). Treat these values as the starting point and adjust during M1. The Tailwind theme in `tailwind.config.ts` is the implementation source for these tokens; update both this document and the theme when values change.
 
 ## Color
 | Token | Value | Use |
@@ -12,7 +12,7 @@ Source: side-panel mockup (Mapping review and Document library screens). Treat t
 | border-dashed | #98A2B3 | Excluded-field outline |
 | text-primary | #14213D | Headings, values |
 | text-secondary | #4B5565 | Labels, helper text |
-| accent | #0F766E | Primary buttons, active tab |
+| accent | #0F766E | Primary buttons, active tab, focus |
 | success-text / bg | #0B5D3B / #DDF3E7 | High confidence, default badge |
 | warning-text / bg | #7A4A00 / #FFF0CC | Medium confidence, needs review |
 | danger | #B42318 | Clear all data |
@@ -26,10 +26,19 @@ Source: side-panel mockup (Mapping review and Document library screens). Treat t
 Text pairs are chosen for at least 4.5:1 contrast. Confidence is always shown as a text label, never by color alone.
 
 ## Typography
-Inter (fallback: system sans-serif). Panel title 17px/700; card value 15px/600; labels and buttons 12px; helper text 11px.
+Inter (fallback: system sans-serif). Panel title 17px/700; card value 15px/600; labels and buttons 12px; helper text 11px. Inter may use the system fallback until a locally bundled font is added; do not fetch fonts at runtime.
 
 ## Shape and spacing
 Card radius 10px, button radius 8px, badge radius pill. Card padding 12px, panel padding 16px, gap 10px. Minimum touch target 44px.
+
+## Interaction and accessibility states
+- Keyboard focus: 2px solid accent outline with a 2px offset and a subtle accent halo; never remove focus indication.
+- Hover: subtle surface change only; hover must not be the only way to discover an action.
+- Disabled: muted/disabled surface or reduced opacity, with native disabled semantics where applicable.
+- Loading: preserve control dimensions, expose progress/status to assistive technology, and prevent duplicate actions.
+- Respect `prefers-reduced-motion`; avoid motion as the only status cue.
+- Keep labels visible, pair status colors with text, and maintain the documented contrast target.
+- M1 ships a light theme only. Dark theme and icon family remain future design decisions; do not invent a second palette in feature work.
 
 ## Design decisions
 1. **Side panel, not popup**: stays open while the user interacts with the form.
@@ -59,7 +68,7 @@ Card radius 10px, button radius 8px, badge radius pill. Card padding 12px, panel
 380px side panel. Fixed header and footer; the list scrolls in between. Designed for long forms (dozens of fields).
 
 ## Not yet specified
-Hover, focus, disabled and loading states per component; dark theme; icon set; focus ring style; extension icon and store assets.
+Icon family; extension icon and store assets. Dark theme is explicitly out of M1 scope.
 
 ## Mockup
 Exported screens are in `docs/mockups/` (see its README). The editable source lives in a private Claude canvas and is not part of the repo.

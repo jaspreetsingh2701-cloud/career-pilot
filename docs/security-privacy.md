@@ -21,9 +21,10 @@ Never autofill passwords, OTPs, payment-card, bank-account, or authentication co
 - Provide deletion and clear failure/fallback feedback.
 
 ## Extension permissions
-- Begin with minimal permissions and user-initiated active-tab access where possible.
-- Avoid broad all-sites host permissions unless justified.
-- Explain optional permission prompts.
+- M1 requests only `storage`, `sidePanel`, and `activeTab`; no broad `host_permissions` are declared.
+- The M1 content script is restricted to localhost fixture origins to validate the message path without requesting access to arbitrary sites.
+- Revisit content-script injection and any additional permission only when implementing user-initiated detection in M3; document the rationale before changing the manifest.
+- Avoid broad all-sites host permissions unless justified. Explain optional permission prompts.
 - Review the generated Manifest V3 manifest before release.
 
 ## Messaging and DOM safety

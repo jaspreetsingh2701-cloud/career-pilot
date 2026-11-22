@@ -3,6 +3,12 @@
 ## Goals
 Verify detection, matching, option selection, filling, document management, and safe non-action behavior. Test ambiguous and unsupported cases as deliberately as successful cases.
 
+## M1 foundation checks
+- Run `npm run lint`, `npm run typecheck`, `npm test`, and `npm run build` locally and in CI.
+- Load `.output/chrome-mv3` as an unpacked extension in Chrome; verify the side panel opens.
+- Serve `tests/fixtures/local-page` on localhost and verify the side panel's ping reaches the content script and returns a visible status.
+- Inspect the generated manifest: M1 must not request broad `host_permissions`; the content script is limited to localhost fixture URLs.
+
 ## Unit tests (Vitest)
 - Label association, wrapping labels, names/IDs, placeholders, ARIA names/descriptions.
 - Helper text, examples, fieldset/legend context.
