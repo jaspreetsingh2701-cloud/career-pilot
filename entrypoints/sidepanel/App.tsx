@@ -222,6 +222,13 @@ export default function App() {
             </label>
           </div>
           <div className="rounded-card border border-border bg-card p-card">
+            <SectionHeader title="Website access rules" />
+            <p className="mt-2 text-xs leading-5 text-text-secondary">One domain or exact IP address per line. Blocklist takes priority. An empty allowlist allows all otherwise-supported HTTP(S) sites.</p>
+            <label className={`${labelClass} mt-3`}>Allowlist (optional)<textarea className={`${inputClass} min-h-24 py-2`} value={allowlistText} onChange={e => setAllowlistText(e.target.value)} /></label>
+            <label className={`${labelClass} mt-3`}>Blocklist<textarea className={`${inputClass} min-h-24 py-2`} value={blocklistText} onChange={e => setBlocklistText(e.target.value)} /></label>
+            <label className="mt-3 flex items-center gap-2 text-xs text-text-secondary"><input type="checkbox" checked={accessRules.includeSubdomains} onChange={e => setAccessRules(current => ({ ...current, includeSubdomains: e.target.checked }))} /> Include subdomains (IP rules always match exactly)</label>
+            <Button className="mt-3 w-full" variant="secondary" onClick={() => void persistAccessRules()}>Save website rules</Button>
+            <div className="my-4 border-t border-border" />
             <SectionHeader title="Your data and privacy" />
             <p className="mt-2 text-xs leading-5 text-text-secondary">Your profile, documents, saved answers, snippets and appearance preference are stored locally in this browser. CareerPilot has no account, cloud sync or backend.</p>
             <Banner className="mt-3">Clear local data permanently deletes your profile, document library, saved answers and snippets from this browser.</Banner>

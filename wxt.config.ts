@@ -5,7 +5,7 @@ export default defineConfig({
   manifest: {
     name: 'CareerPilot',
     description: 'Local-first job application form assistance.',
-    permissions: ['storage', 'sidePanel', 'activeTab', 'clipboardWrite'],
+    permissions: ['storage', 'sidePanel', 'activeTab', 'scripting', 'clipboardWrite'],
     side_panel: { default_path: 'sidepanel.html' },
   },
 });

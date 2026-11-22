@@ -21,7 +21,8 @@ Never autofill passwords, OTPs, payment-card, bank-account, or authentication co
 - Provide deletion and clear failure/fallback feedback.
 
 ## Extension permissions
-- M1 requests only `storage`, `sidePanel`, `activeTab`, and `clipboardWrite`; no broad `host_permissions` are declared.
+- M3 requests `storage`, `sidePanel`, `activeTab`, `scripting`, and `clipboardWrite`; no broad `host_permissions` are declared.
+- Form detection is initiated by an explicit side-panel click. CareerPilot checks local allow/block rules, then uses temporary `activeTab` access to inject the content script into the current tab. Rules do not grant browser access and cannot override Chrome permissions.
 - Profile and appearance preference use `chrome.storage.local`; documents and reusable collections use IndexedDB. No data is sent to a server. `clipboardWrite` is used only after the user explicitly selects Copy for a saved snippet; CareerPilot never reads clipboard contents.
 - Imported documents are restricted to PDF, DOC, or DOCX and 5 MB per file. Backup restore validates the schema and document metadata before replacing local records.
 - The M1 content script is restricted to localhost fixture origins to validate the message path without requesting access to arbitrary sites.
