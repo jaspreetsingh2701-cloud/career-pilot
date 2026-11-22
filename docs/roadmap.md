@@ -1,10 +1,16 @@
 # MVP Roadmap
 
-Build one milestone at a time. Each milestone includes implementation, tests, documentation updates, and a review.
+Build one milestone at a time. Each milestone includes implementation, tests, documentation updates, and a review. Work feature-by-feature: validate the logic with a thin token-based UI, then complete the visual-matching pass for that screen before moving on. Do not build every screen upfront or defer all visual refinement to the end.
 
 ## M1 — Extension foundation
-WXT + React + TypeScript + Tailwind; Manifest V3 side panel, background/content entrypoints, basic navigation, typed messaging, minimal permissions, lint/typecheck/test setup, GitHub Actions CI (lint, typecheck, unit tests, build).
-**Exit:** builds and loads unpacked in Chrome; side panel opens; local page messaging works; permissions reviewed.
+WXT + React + TypeScript + Tailwind; Manifest V3 side panel; background/content entrypoints; typed message contracts; minimal permissions; design tokens in Tailwind; small shared UI primitives; ESLint, TypeScript, Vitest and GitHub Actions CI (lint, typecheck, unit tests, build).
+**Exit:** production build succeeds; extension loads unpacked in Chrome; side panel opens; local fixture page messaging works; generated manifest permissions are reviewed; CI checks are green. No profile, detection, mapping, filling, or document workflows in M1.
+
+### M1 implementation notes
+- Tailwind theme values must come from `docs/design-tokens.md`; avoid one-off hex values in feature components.
+- Shared primitives are deliberately small: Button, Badge, FieldRow, SectionHeader, Chip, Banner and TextInput.
+- The initial content script is scoped to localhost fixture URLs only. This is a messaging smoke test, not a production host-permission decision.
+- Keyboard focus, disabled states, minimum 44px controls and reduced-motion preferences are foundational component requirements.
 
 ## M2 — Profile and document library
 Profile CRUD; multiple resumes/cover letters; IndexedDB Blob storage; defaults; role variants; per-application document choice; saved answers; message snippets with copy-to-clipboard; first-run onboarding; backup export/import; clear-local-data.
