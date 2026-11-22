@@ -13,8 +13,14 @@ WXT + React + TypeScript + Tailwind; Manifest V3 side panel; background/content 
 - Keyboard focus, disabled states, minimum 44px controls and reduced-motion preferences are foundational component requirements.
 
 ## M2 — Profile and document library
-Profile CRUD; multiple resumes/cover letters; IndexedDB Blob storage; defaults; role variants; per-application document choice; saved answers; message snippets with copy-to-clipboard; first-run onboarding; backup export/import; clear-local-data.
-**Exit:** persistence, default uniqueness, replace/delete and document selection are tested; backup round-trip restores identical data on a clean profile.
+Profile CRUD; multiple resumes/cover letters and role variants; IndexedDB Blob storage; independent default resume/cover letter; saved answers; message snippets with plain-text copy; first-run onboarding; versioned backup export/import; clear-local-data. Appearance preferences are included in M2: Light, Dark, and System (default), persisted locally.
+
+### M2 implementation notes
+- Keep profile and appearance preferences in `chrome.storage.local`; keep document Blobs, document metadata, saved answers, and message snippets in IndexedDB.
+- Validate imported document type and size (PDF, DOC, DOCX; 5 MB per document). Backups are versioned JSON and remain on the user's device.
+- Theme uses semantic CSS variables and Tailwind class-based dark mode. System mode follows `prefers-color-scheme` and reacts to operating-system changes.
+- Do not introduce account, cloud, remote AI, or network persistence.
+**Exit:** profile and library data persist across reloads; only one default per document type; document replacement/deletion and selection are tested; backup round-trip restores profile, documents, answers, snippets, and defaults; theme preference persists and system mode follows OS changes.
 
 ## M3 — Form detection and metadata
 Detect likely application forms; inspect input, textarea, select, radio, checkbox, and file controls; extract labels, names, IDs, placeholders, examples, helper text, ARIA, grouping, and native options; filter unrelated/sensitive fields; fixtures for custom dropdowns (e.g. combobox patterns) in addition to native controls; capture current values and classify empty/placeholder/matching/different; time-boxed spike on same-origin iframes.
