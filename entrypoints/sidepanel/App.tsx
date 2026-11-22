@@ -155,7 +155,7 @@ export default function App() {
       const targets: FillTarget[] = selected.map(field => {
         const suggestion = mappingSuggestions.find(item => item.detectedFieldId === field.id);
         return {
-          fieldId: field.id, index: detectedFields.findIndex(item => item.id === field.id),
+          fieldId: field.id, index: field.index,
           tagName: field.tagName, name: field.name, elementId: field.elementId,
           controlType: field.controlType,
           expectedValue: editedValues[field.id] ?? suggestion?.selectedOption?.value ?? suggestion?.proposedValue ?? '',
@@ -227,11 +227,12 @@ export default function App() {
             <p className="text-xs leading-5 text-text-secondary">Review and edit each value. Only individually approved fields are sent to the page. Existing values are preserved unless replacement is explicitly enabled.</p>
             {detectedFields.map(field => {
               const suggestion = mappingSuggestions.find(item => item.detectedFieldId === field.id);
-              const canSuggest = !!suggestion && suggestion.status !== 'no-match' && suggestion.status !== 'ambiguous' && !!(editedValues[field.id] ?? suggestion.selectedOption?.value ?? suggestion.proposedValue).trim();
               const result = fillResults.find(item => item.fieldId === field.id);
               const value = editedValues[field.id] ?? suggestion?.selectedOption?.value ?? suggestion?.proposedValue ?? '';
+              const fillable = ['text','email','tel','url','number','date','month','week','time','datetime-local','search','textarea','select'].includes(field.controlType);
               return <div key={field.id} className="rounded-control border border-border p-3">
                 <div className="flex items-start justify-between gap-2"><div className="min-w-0"><p className="text-xs font-semibold">{field.label || field.name || field.elementId || field.controlType}</p><p className="mt-1 text-[11px] text-text-secondary">{field.controlType} · {suggestion?.status ?? 'no-match'}{suggestion ? ` · ${suggestion.confidence}%` : ''}</p></div><span className="text-[11px] font-semibold text-text-secondary">{result?.status ?? (approvedFields[field.id] ? 'Approved' : 'Review')}</span></div>
+                {!fillable && <p className="mt-1 text-[11px] text-warning">This control type needs grouped-control support and cannot be filled in this phase.</p>}
                 {suggestion?.reasons.map(reason => <p key={reason} className="mt-1 text-[11px] text-text-secondary">{reason}</p>)}
                 {suggestion?.alternatives && <p className="mt-1 text-[11px] text-warning">Multiple possible sources. Choose/edit a value manually before approval.</p>}
                 <label className="mt-2 block text-[11px] font-semibold text-text-secondary">Proposed value
@@ -239,7 +240,7 @@ export default function App() {
                 </label>
                 <p className="mt-1 break-words text-[11px] text-text-secondary">Current page value: {field.currentValue || '(empty)'}</p>
                 <div className="mt-2 flex flex-wrap items-center gap-3">
-                  <label className="flex items-center gap-1 text-[11px]"><input type="checkbox" checked={approvedFields[field.id] === true} onChange={event => setApprovedFields(current => ({ ...current, [field.id]: event.target.checked }))} /> Approve this field</label>
+                  <label className="flex items-center gap-1 text-[11px]"><input type="checkbox" disabled={!fillable || !value.trim()} checked={approvedFields[field.id] === true} onChange={event => setApprovedFields(current => ({ ...current, [field.id]: event.target.checked }))} /> Approve this field</label>
                   {!!field.currentValue && <label className="flex items-center gap-1 text-[11px]"><input type="checkbox" checked={replaceFields[field.id] === true} onChange={event => setReplaceFields(current => ({ ...current, [field.id]: event.target.checked }))} /> Replace existing value</label>}
                 </div>
                 {result && <p className="mt-2 text-[11px] font-semibold" role="status">{result.status}: {result.message}</p>}
