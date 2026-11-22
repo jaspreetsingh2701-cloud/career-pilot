@@ -59,9 +59,6 @@ function candidateScore(field: DetectedField, candidate: MappingCandidate): { sc
   const labelWords = new Set(words(field.label));
   const overlap = candidateTerms.some(term => words(term).filter(word => labelWords.has(word)).length >= 2);
   if (overlap && score < 45) { score += 25; reasons.push('Multiple meaningful words overlap'); }
-  if (field.groupContext && candidate.kind === 'profile' && candidate.section && includesPhrase(field.groupContext, candidate.section)) {
-    score += 10; reasons.push('Form section matches profile section');
-  }
   return { score: Math.min(score, 100), reasons };
 }
 
