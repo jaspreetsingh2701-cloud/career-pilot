@@ -1,204 +1,32 @@
 # Data Model and Local Persistence
 
 ## Storage rules
-- Keep all MVP data in the browser profile.
-- Use chrome.storage.local for small profile/preferences data.
-- Use IndexedDB for document Blobs and larger collections.
-- Hide storage APIs behind repositories.
-- Version schemas and test migrations.
-
-## Website access rules
-Stored in `chrome.storage.local` under `careerPilot.websiteAccessRules`.
-```ts
-interface WebsiteAccessRules { allowlist: string[]; blocklist: string[]; includeSubdomains: boolean; }
-```
-An empty allowlist means no allowlist restriction. A populated allowlist restricts eligible hosts. Blocklist always wins. Subdomain matching applies only to domain rules; IP rules are exact. These rules are application policy, not browser permissions.
-
-## Appearance preference
-
-`careerPilot.theme` in `chrome.storage.local` stores `light`, `dark`, or `system`. Missing or invalid values resolve to `system`. System mode follows the browser/OS `prefers-color-scheme` media query.
+- chrome.storage.local: profile and small preferences.
+- IndexedDB: document Blobs, document metadata, saved answers and message snippets.
+- Keep storage behind repositories and version schemas.
 
 ## Candidate profile
-```ts
-interface CustomProfileField { id: string; key: string; label: string; value: string; type: 'text' | 'number' | 'date' | 'url' | 'textarea'; section?: string; aliases: string[]; description?: string; }
+The runtime UserProfile type is in `src/features/profile/types.ts`. It includes optional phoneCountryCode, total experience, compensation, notice period, links, skills, languages, education, employment and custom fields. Built-in candidates are defined in `src/features/profile/schema/standard-fields.ts`; standard/custom values are normalized by `src/features/profile/utils/profile-field-mapper.ts`. The phone candidate combines the selected calling code and local number once.
 
-interface UserProfile {
-  id: string;
-  firstName: string;
-  lastName: string;
-  email: string;
-  phone?: string;
-  totalExperienceYears?: number;
-  currentDesignation?: string;
-  currentCompany?: string;
-  phoneCountryCode?: string;
-  currentCompensation?: string;
-  expectedCompensation?: string;
-  compensationCurrency?: string;
-  noticePeriod?: string;
-  noticePeriodNegotiable?: boolean;
-  preferredRole?: string;
-  workMode?: "onsite" | "hybrid" | "remote";
-  willingToRelocate?: boolean;
-  skills?: string[];
-  languages?: string[];
-  education?: EducationEntry[];
-  employment?: EmploymentEntry[];
-  currentLocation?: string;
-  linkedinUrl?: string;
-  githubUrl?: string;
-  portfolioUrl?: string;
-  customFields?: CustomProfileField[]; // optional for backwards compatibility
-  updatedAt: number;
-}
-```
-```ts
-interface EducationEntry { institution: string; degree?: string; field?: string; startYear?: number; endYear?: number; }
-interface EmploymentEntry { company: string; title: string; startDate?: string; endDate?: string; current?: boolean; summary?: string; }
-```
-Keep optional values optional. Preserve user-entered units and wording for compensation and notice period; do not infer missing values. Built-in field labels/aliases live in `src/features/profile/schema/standard-fields.ts`; UI-created fields are stored in `customFields`. `src/features/profile/utils/profile-field-mapper.ts` normalizes both sources for matching. Missing `customFields` in older profiles means an empty list.
+## IndexedDB
+Database: `career-pilot-local`, version 1. Stores: `documents`, `documentBlobs`, `savedAnswers`, `messageSnippets`. Runtime record types are in `src/features/library/types.ts`.
 
-## Documents
-```ts
-type DocumentType = "resume" | "cover-letter" | "other";
-
-interface CareerDocument {
-  id: string;
-  name: string;
-  type: DocumentType;
-  fileName: string;
-  mimeType: string;
-  sizeBytes: number;
-  isDefault: boolean;
-  targetRole?: string;
-  createdAt: number;
-  updatedAt: number;
-}
-```
-Store the actual Blob in IndexedDB, keyed by document ID or a related blob key. Keep metadata and Blob operations consistent. Only one default resume and one default cover letter may be active. Applications store selected document IDs rather than duplicate files.
-
-## Saved answers
-```ts
-interface SavedAnswer {
-  id: string;
-  title: string;
-  answer: string;
-  category?: string;
-  keywords: string[];
-  createdAt: number;
-  updatedAt: number;
-}
-```
-Answers may be sensitive personal statements; keep local and allow review and deletion.
-
-## Message snippets
-```ts
-interface MessageSnippet {
-  id: string;
-  title: string;
-  body: string;            // plain text; \n line breaks preserved exactly
-  category?: string;       // e.g. "linkedin-connection", "referral", "follow-up"
-  maxLength?: number;      // optional, user-editable
-  createdAt: number;
-  updatedAt: number;
-}
-```
-Placeholders use {{name}} syntax and are resolved at copy time; unresolved placeholders are flagged, never silently removed. Store as plain text, never HTML.
-
-## Detected fields and mappings
-```ts
-type SupportedControl =
-  | "text" | "email" | "tel" | "url" | "number"
-  | "textarea" | "select" | "radio" | "checkbox" | "file" | "other";
-
-interface DetectedOption {
-  label: string;
-  value: string;
-  selected: boolean;
-  disabled: boolean;
-}
-
-interface DetectedField {
-  id: string;
-  tagName: string;
-  controlType: SupportedControl;
-  name?: string;
-  elementId?: string;
-  label: string;
-  placeholder?: string;
-  accessibleDescription?: string;
-  helperText?: string;
-  exampleText?: string;
-  groupContext?: string;
-  currentValue?: string;       // in-memory snapshot only; never logged or persisted
-  hasFile?: boolean;           // file inputs: a file is already attached
-  prefilled: boolean;          // non-empty and not a placeholder
-  required: boolean;
-  disabled: boolean;
-  readOnly: boolean;
-  hidden: boolean;
-  options?: DetectedOption[];
-}
-```
-Detected fields are transient scan results; avoid persisting page selectors or unrelated page data.
-
-```ts
-interface FieldMapping {
-  detectedFieldId: string;
-  target:
-    | { kind: "profile"; profileKey: string }
-    | { kind: "saved-answer"; answerId: string }
-    | { kind: "manual"; value: string };
-  proposedValue?: string;
-  selectedOption?: { label: string; value: string };
-  confidence: number;
-  reasons: string[];
-  existingValue?: string;      // value the site already holds (conflict display)
-  overwriteApproved?: boolean; // per-field opt-in, never set by bulk approval
-  status: "suggested" | "approved" | "skipped" | "needs-review" | "already-filled" | "conflict";
-}
-```
-Confidence is heuristic, not a correctness guarantee. Always require user approval.
-
-## Application history
-```ts
-interface ApplicationRecord {
-  id: string;
-  companyName?: string;
-  roleTitle?: string;
-  applicationUrl?: string;
-  recordedAt: number;
-  selectedResumeId?: string;
-  selectedCoverLetterId?: string;
-  notes?: string;
-  status: "draft" | "submitted" | "unknown";
-}
-```
-Only mark submitted after explicit user confirmation.
-
-## Suggested IndexedDB stores
-documents, documentBlobs, savedAnswers, messageSnippets, applications. Add indexes for type/default role, answer category/keywords, and application date where useful.
-
-## Data lifecycle
-- Validate before create/update.
-- Replace Blob and metadata consistently; clean superseded content.
-- Handle deleted document references in history without silent dangling links.
-- Clear all extension storage and IndexedDB stores/databases; verify deletion.
-- Add schema versioning and migration tests.
-
-## Backup file
+## Backup file — schema version 1
+The current serializer in `src/features/backup/backup.ts` writes:
 ```ts
 interface BackupFile {
-  schemaVersion: number;
+  schemaVersion: 1;
   exportedAt: number;
-  profile?: UserProfile;
-  savedAnswers: SavedAnswer[];
-  messageSnippets: MessageSnippet[];
-  applications: ApplicationRecord[];
-  documents: Array<{ meta: CareerDocument; contentBase64: string }>;
+  profile: UserProfile;
+  answers: SavedAnswer[];
+  snippets: MessageSnippet[];
+  documents: Array<{ metadata: CareerDocument; contentBase64: string }>;
 }
 ```
-Validate version and contents on import; migrate older versions; confirm before overwrite.
+These are the actual serialized property names. Application history is not included. Import validation and coordinated rollback across chrome.storage.local and IndexedDB are still open; restore is not atomic.
+
+## Detection and mapping
+Scan results are transient in-memory snapshots, not extension storage records. Current implementation supports input, textarea and select elements. Radio/checkbox group semantics, richer accessible-name resolution and placeholder/prefilled classification remain incomplete.
 
 ## Privacy
-No cloud sync or external upload. Do not log profile values, documents, saved answers, or full page HTML. Content scripts receive only the values needed for the current approved action.
+No cloud sync or external upload. Do not log profile values, documents, saved answers, scan snapshots or full page HTML.

@@ -1,58 +1,37 @@
 # Security and Privacy
 
 ## MVP privacy promise
-Profile data, documents, saved answers, preferences, and history stay in the browser profile. The MVP has no backend, cloud sync, remote LLM, or third-party analytics transmission. Verify this promise against actual permissions, dependencies, network behavior, and release configuration.
+Profile data, documents, saved answers and preferences stay in the browser profile. The MVP has no backend, cloud sync, remote LLM or third-party analytics transmission. Verify this promise against actual permissions, dependencies, network behavior and release configuration.
 
 ## Data minimization
 - Scan only after an explicit user action.
-- Inspect only likely application forms and necessary field metadata.
-- Do not retain full page HTML, unrelated browsing activity, or unrelated form values.
-- Send only approved values to the content script.
-- Keep scan data transient, including snapshots of values the site already holds; never log or persist them.
+- Inspect only supported form controls and necessary field metadata.
+- Do not retain full page HTML, unrelated browsing activity or unrelated form values.
+- Send only individually approved values to the content script.
+- Keep scan data transient; never log or persist page values.
 
 ## Sensitive controls
-Never autofill passwords, OTPs, payment-card, bank-account, or authentication controls. Treat government identifiers, demographic/equal-opportunity answers, legal attestations, and work-authorization declarations as sensitive; exclude by default and do not infer answers. Do not bypass CAPTCHA, authentication, access controls, or site security.
-
-## File safety
-- Validate file type and size at import.
-- Render filenames and page metadata as text, never HTML.
-- Keep file content in IndexedDB and never transmit it in MVP.
-- Require explicit document selection and upload approval.
-- Provide deletion and clear failure/fallback feedback.
+Never autofill passwords, OTPs, payment-card, bank-account or authentication controls. Treat government identifiers, demographic/equal-opportunity answers, legal attestations and work-authorization declarations as sensitive; exclude by default and do not infer answers. Detection and fill-time checks both apply sensitive-field filters. Do not bypass CAPTCHA, authentication, access controls or site security.
 
 ## Extension permissions
-- M3 requests `storage`, `sidePanel`, `activeTab`, `scripting`, and `clipboardWrite`; no broad `host_permissions` are declared.
-- Form detection is initiated by an explicit side-panel click. CareerPilot checks local allow/block rules, then uses temporary `activeTab` access to inject the content script into the current tab. Rules do not grant browser access and cannot override Chrome permissions.
-- Profile and appearance preference use `chrome.storage.local`; documents and reusable collections use IndexedDB. No data is sent to a server. `clipboardWrite` is used only after the user explicitly selects Copy for a saved snippet; CareerPilot never reads clipboard contents.
-- Imported documents are restricted to PDF, DOC, or DOCX and 5 MB per file. Backup restore validates the schema and document metadata before replacing local records.
-- The M1 content script is restricted to localhost fixture origins to validate the message path without requesting access to arbitrary sites.
-- Revisit content-script injection and any additional permission only when implementing user-initiated detection in M3; document the rationale before changing the manifest.
-- Avoid broad all-sites host permissions unless justified. Explain optional permission prompts.
+- The manifest requests storage, sidePanel, activeTab, scripting and clipboardWrite; no broad host_permissions are declared.
+- Form detection starts from an explicit side-panel action. CareerPilot checks local allow/block rules, then uses temporary activeTab access for current-tab injection.
+- Static content-script matches are limited to localhost fixture origins; explicit user-initiated injection is a separate flow.
+- Profile/preferences use chrome.storage.local; documents and reusable collections use IndexedDB. No data is sent to a server.
 - Review the generated Manifest V3 manifest before release.
 
 ## Messaging and DOM safety
-- Validate sender, tab/frame context, request ID, message type, and payload schema.
+- Validate sender context and message type before handling content-script messages.
 - Never evaluate page-provided strings or execute code received from content.
-- Treat labels, option text, URLs, and metadata as untrusted.
+- Treat labels, option text, URLs and metadata as untrusted.
 - Revalidate field references before filling because pages may rerender.
-- M5 fill messages are explicit and carry per-field approval; the side panel binds approval to the scanned tab/URL, and the content script accepts extension-origin messages only. Content-side filling re-queries the current DOM, compares target identity and live values, and never submits.
-- Sensitive field metadata is filtered during detection. Scan values remain transient in side-panel memory only and are not persisted or logged.
-- Existing values are preserved by default. Replacement is an explicit per-field opt-in and is never enabled by bulk approval.
-- Avoid unsafe HTML insertion.
+- Content-side filling re-queries the DOM, checks target identity and live values, and never submits.
+- Content listener registration is guarded against repeated injection in the same isolated world.
+- Runtime handlers must not log messages, sender details, field values or page metadata.
+- Existing values are preserved by default. Replacement is an explicit per-field opt-in.
 
-## Clipboard
-Copy happens only on an explicit click. Do not read the clipboard, do not log copied text, and do not auto-insert text into pages. Remind users that other apps can read the clipboard.
+## Backup and restore
+The current schema-version-1 backup contains profile, answers, snippets and document metadata/content. Import validation and coordinated rollback across chrome.storage.local and IndexedDB remain open work; do not describe restore as atomic.
 
 ## User control
-Detection, autofill, and document assignment are explicit actions. Show values and filenames before use. Never submit forms automatically. Provide clear-all-data and distinguish filling from submission.
-
-## Release checklist
-- [ ] Manifest permissions reviewed.
-- [ ] No personal/document data sent remotely.
-- [ ] No sensitive values in logs.
-- [ ] File validation and untrusted text rendering tested.
-- [ ] Message schemas and sender contexts validated.
-- [ ] Sensitive fields excluded by tests.
-- [ ] Clear-all-data covers IndexedDB and chrome.storage.local.
-- [ ] Dependencies reviewed.
-- [ ] Store privacy disclosures match actual behavior.
+Detection, autofill and document assignment are explicit actions. Never submit forms automatically. Provide clear-all-data and distinguish filling from submission.
