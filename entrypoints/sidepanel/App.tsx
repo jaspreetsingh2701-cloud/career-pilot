@@ -26,6 +26,7 @@ export default function App() {
   const [status, setStatus] = useState('Your information stays on this device.');
   const [busy, setBusy] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [clipboardFallback, setClipboardFallback] = useState('');
   const [dirty, setDirty] = useState(false);
   const [answerEditingId, setAnswerEditingId] = useState<string | null>(null);
   const [customEditingId, setCustomEditingId] = useState<string | null>(null);
@@ -81,8 +82,8 @@ export default function App() {
     setAnswerTitle(''); setAnswerBody(''); setAnswerEditingId(null); await refreshLibrary(); setStatus(existing ? 'Saved answer updated.' : 'Saved answer added.');
   }
   async function copyText(value: string, label: string) {
-    try { await navigator.clipboard.writeText(value); setStatus(`${label} copied to clipboard.`); }
-    catch { setStatus('Clipboard access was blocked. Select the text and copy it manually.'); }
+    try { await navigator.clipboard.writeText(value); setClipboardFallback(''); setStatus(`${label} copied to clipboard.`); }
+    catch { setClipboardFallback(value); setStatus('Clipboard access was blocked. Click the text below to select it, then copy manually.'); }
   }
   function addCustomField() {
     if (!customLabel.trim() || !customValue.trim()) { setStatus('Add a label and value for the custom field.'); return; }
@@ -221,6 +222,7 @@ export default function App() {
             <Button variant="danger" className="mt-3 w-full" onClick={() => void clearAll()}>Clear all local data</Button>
           </div>
         </div>}
+        {clipboardFallback && <textarea aria-label="Text ready for manual copying" readOnly value={clipboardFallback} onFocus={event => event.currentTarget.select()} className={`${inputClass} min-h-24 py-2`} />}
         <p className="sticky bottom-2 rounded-control border border-border bg-card p-3 text-xs font-medium text-text-primary shadow-sm" role="status" aria-live="polite">{status}</p>
       </section>
       <footer className="border-t border-border bg-card px-panel py-3 text-center text-[11px] text-text-secondary">You stay in control · Review every suggestion · Submit manually</footer>
