@@ -1,10 +1,23 @@
-import { describe, expect, it } from 'vitest';
-import { getThemePreference } from './theme';
-describe('theme preference defaults', () => {
-  it('uses system as the default when no preference exists', async () => {
-    const original = globalThis.chrome;
-    Object.defineProperty(globalThis, 'chrome', { configurable: true, value: { storage: { local: { get: async () => ({}) } } } });
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { getThemePreference, saveThemePreference } from './theme';
+
+afterEach(() => vi.unstubAllGlobals());
+
+describe('theme preference', () => {
+  it('defaults to system when no preference has been saved', async () => {
+    vi.stubGlobal('chrome', { storage: { local: { get: vi.fn().mockResolvedValue({}) } } });
     await expect(getThemePreference()).resolves.toBe('system');
-    Object.defineProperty(globalThis, 'chrome', { configurable: true, value: original });
+  });
+
+  it('falls back to system for an unknown stored value', async () => {
+    vi.stubGlobal('chrome', { storage: { local: { get: vi.fn().mockResolvedValue({ 'careerPilot.theme': 'sepia' }) } } });
+    await expect(getThemePreference()).resolves.toBe('system');
+  });
+
+  it('persists an explicit theme selection locally', async () => {
+    const set = vi.fn().mockResolvedValue(undefined);
+    vi.stubGlobal('chrome', { storage: { local: { set } } });
+    await saveThemePreference('dark');
+    expect(set).toHaveBeenCalledWith({ 'careerPilot.theme': 'dark' });
   });
 });
