@@ -1,3 +1,4 @@
+import { defineContentScript } from '#imports';
 import { browser } from 'wxt/browser';
 import type { TabMessage } from '../src/types/messaging';
 
