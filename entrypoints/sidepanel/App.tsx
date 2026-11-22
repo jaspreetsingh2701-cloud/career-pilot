@@ -6,7 +6,8 @@ import { SectionHeader } from '../../src/components/common/SectionHeader';
 import { getProfile, saveProfile } from '../../src/features/profile/repository';
 import { emptyProfile, type UserProfile } from '../../src/features/profile/types';
 import { addDocument, clearLibrary, deleteAnswer, deleteDocument, deleteSnippet, listAnswers, listDocuments, listSnippets, saveAnswer, saveSnippet, setDefaultDocument } from '../../src/features/library/database';
-import type { CareerDocument, DocumentType, MessageSnippet, SavedAnswer } from '../../src/features/library/types';
+import type { CareerDocument, DocumentType, SavedAnswer } from '../../src/features/library/types';
+import { createBackup, restoreBackup } from '../../src/features/backup/backup';
 import { getThemePreference, saveThemePreference, type ThemePreference } from '../../src/features/settings/theme';
 
 type Tab = 'profile' | 'documents' | 'answers' | 'settings';
@@ -21,6 +22,7 @@ export default function App() {
   const [answers, setAnswers] = useState<SavedAnswer[]>([]);
   const [snippets, setSnippets] = useState<MessageSnippet[]>([]);
   const [theme, setTheme] = useState<ThemePreference>('system');
+  const [documentType, setDocumentType] = useState<DocumentType>('resume');
   const [status, setStatus] = useState('Your information stays on this device.');
   const [busy, setBusy] = useState(false);
   const [answerTitle, setAnswerTitle] = useState('');
@@ -111,7 +113,7 @@ export default function App() {
         {tab === 'documents' && <div className="rounded-card border border-border bg-card p-card">
           <SectionHeader title="Document library" count={documents.length} />
           <p className="mb-3 mt-2 text-xs leading-5 text-text-secondary">Import PDF, DOC or DOCX files up to 5 MB. Files are stored in this browser only.</p>
-          <label className="block text-xs font-semibold text-text-secondary">Import document<input type="file" accept=".pdf,.doc,.docx" onChange={uploadDocument} className="mt-2 block w-full text-xs file:mr-2 file:min-h-10 file:rounded-control file:border-0 file:bg-accent file:px-3 file:text-white" /></label>
+          <label className={labelClass}>Document type<select className={inputClass} value={documentType} onChange={e => setDocumentType(e.target.value as DocumentType)}><option value="resume">Resume</option><option value="cover-letter">Cover letter</option><option value="other">Other</option></select></label><label className="mt-3 block text-xs font-semibold text-text-secondary">Import document<input type="file" accept=".pdf,.doc,.docx" onChange={uploadDocument} className="mt-2 block w-full text-xs file:mr-2 file:min-h-10 file:rounded-control file:border-0 file:bg-accent file:px-3 file:text-white" /></label>
           <div className="mt-4 space-y-2">{documents.map(doc => <div key={doc.id} className="rounded-control border border-border p-3">
             <div className="flex items-start justify-between gap-2"><div className="min-w-0"><p className="break-words text-xs font-semibold">{doc.name}</p><p className="mt-1 text-[11px] text-text-secondary">{doc.fileName} · {(doc.sizeBytes / 1024).toFixed(0)} KB</p></div>{doc.isDefault && <span className="shrink-0 rounded-full bg-success-bg px-2 py-1 text-[10px] font-semibold text-success">Default</span>}</div>
             <div className="mt-2 flex gap-2">{doc.type !== 'other' && !doc.isDefault && <button className="text-xs font-semibold text-accent" onClick={async () => { await setDefaultDocument(doc.id, doc.type); await refreshLibrary(); }}>Set default</button>}<button className="text-xs font-semibold text-danger" onClick={async () => { if (window.confirm('Delete this document?')) { await deleteDocument(doc.id); await refreshLibrary(); } }}>Delete</button></div>
