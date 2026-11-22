@@ -10,6 +10,8 @@ Surface: Chrome side panel. Keyboard-operable, visible focus, clear status text.
 5. **History**: user-recorded applications only.
 6. **Settings and data**: what is stored and where, export backup, import backup, clear all data.
 7. **Messages** (Library): snippet list, placeholder form, live preview, character and paragraph counts, "Copy as plain text" with a visible "Copied" state.
+8. **Appearance** (Settings): Light, Dark, System options; System is selected by default and follows OS appearance changes.
+9. **Backup and restore** (Settings): export a versioned local backup and restore after explicit confirmation.
 
 ## First-run flow
 1. Welcome: privacy promise (local only, no submit).
