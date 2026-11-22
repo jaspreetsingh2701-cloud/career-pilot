@@ -38,6 +38,11 @@ describe('fillApprovedFields', () => {
     document.body.innerHTML = '<input id="different" name="other">';
     expect(fillApprovedFields(document, [target()])[0].status).toBe('stale');
   });
+  it('rejects a control whose type changed after scanning', () => {
+    document.body.innerHTML = '<input id="email" name="email" type="password">';
+    expect(fillApprovedFields(document, [target()])[0].status).toBe('stale');
+  });
+
   it('never fills sensitive controls', () => {
     document.body.innerHTML = '<input id="otp" name="otp" type="text">';
     expect(fillApprovedFields(document, [target({ elementId: 'otp', name: 'otp' })])[0].status).toBe('unsupported');
