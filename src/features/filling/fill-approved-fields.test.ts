@@ -6,7 +6,7 @@ const { document, window } = parseHTML('<html><body></body></html>');
 Object.assign(globalThis, { HTMLInputElement: window.HTMLInputElement, HTMLTextAreaElement: window.HTMLTextAreaElement, HTMLSelectElement: window.HTMLSelectElement, Event: window.Event });
 const target = (overrides: Partial<FillTarget> = {}): FillTarget => ({
   fieldId: 'email-field', index: 0, tagName: 'input', name: 'email', elementId: 'email',
-  controlType: 'email', expectedValue: 'person@example.com', approved: true, ...overrides,
+  controlType: 'text', expectedValue: 'person@example.com', approved: true, ...overrides,
 });
 describe('fillApprovedFields', () => {
   beforeEach(() => { document.body.innerHTML = ''; });
@@ -15,7 +15,7 @@ describe('fillApprovedFields', () => {
     const input = document.querySelector('input')!;
     let inputEvents = 0; let changeEvents = 0;
     input.addEventListener('input', () => inputEvents++); input.addEventListener('change', () => changeEvents++);
-    const [result] = fillApprovedFields(document, [target()]);
+    const [result] = fillApprovedFields(document, [target({ controlType: 'email' })]);
     expect(result.status).toBe('filled'); expect(input.value).toBe('person@example.com');
     expect(inputEvents).toBe(1); expect(changeEvents).toBe(1);
   });
