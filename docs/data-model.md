@@ -18,15 +18,29 @@ interface UserProfile {
   totalExperienceYears?: number;
   currentDesignation?: string;
   currentCompany?: string;
+  phoneCountryCode?: string;
   currentCompensation?: string;
   expectedCompensation?: string;
+  compensationCurrency?: string;
   noticePeriod?: string;
+  noticePeriodNegotiable?: boolean;
+  preferredRole?: string;
+  workMode?: "onsite" | "hybrid" | "remote";
+  willingToRelocate?: boolean;
+  skills?: string[];
+  languages?: string[];
+  education?: EducationEntry[];
+  employment?: EmploymentEntry[];
   currentLocation?: string;
   linkedinUrl?: string;
   githubUrl?: string;
   portfolioUrl?: string;
   updatedAt: number;
 }
+```
+```ts
+interface EducationEntry { institution: string; degree?: string; field?: string; startYear?: number; endYear?: number; }
+interface EmploymentEntry { company: string; title: string; startDate?: string; endDate?: string; current?: boolean; summary?: string; }
 ```
 Keep optional values optional. Preserve user-entered units and wording for compensation and notice period; do not infer missing values.
 
@@ -63,6 +77,20 @@ interface SavedAnswer {
 ```
 Answers may be sensitive personal statements; keep local and allow review and deletion.
 
+## Message snippets
+```ts
+interface MessageSnippet {
+  id: string;
+  title: string;
+  body: string;            // plain text; \n line breaks preserved exactly
+  category?: string;       // e.g. "linkedin-connection", "referral", "follow-up"
+  maxLength?: number;      // optional, user-editable
+  createdAt: number;
+  updatedAt: number;
+}
+```
+Placeholders use {{name}} syntax and are resolved at copy time; unresolved placeholders are flagged, never silently removed. Store as plain text, never HTML.
+
 ## Detected fields and mappings
 ```ts
 type SupportedControl =
@@ -88,6 +116,9 @@ interface DetectedField {
   helperText?: string;
   exampleText?: string;
   groupContext?: string;
+  currentValue?: string;       // in-memory snapshot only; never logged or persisted
+  hasFile?: boolean;           // file inputs: a file is already attached
+  prefilled: boolean;          // non-empty and not a placeholder
   required: boolean;
   disabled: boolean;
   readOnly: boolean;
@@ -108,7 +139,9 @@ interface FieldMapping {
   selectedOption?: { label: string; value: string };
   confidence: number;
   reasons: string[];
-  status: "suggested" | "approved" | "skipped" | "needs-review";
+  existingValue?: string;      // value the site already holds (conflict display)
+  overwriteApproved?: boolean; // per-field opt-in, never set by bulk approval
+  status: "suggested" | "approved" | "skipped" | "needs-review" | "already-filled" | "conflict";
 }
 ```
 Confidence is heuristic, not a correctness guarantee. Always require user approval.
@@ -130,7 +163,7 @@ interface ApplicationRecord {
 Only mark submitted after explicit user confirmation.
 
 ## Suggested IndexedDB stores
-documents, documentBlobs, savedAnswers, applications. Add indexes for type/default role, answer category/keywords, and application date where useful.
+documents, documentBlobs, savedAnswers, messageSnippets, applications. Add indexes for type/default role, answer category/keywords, and application date where useful.
 
 ## Data lifecycle
 - Validate before create/update.
@@ -138,6 +171,20 @@ documents, documentBlobs, savedAnswers, applications. Add indexes for type/defau
 - Handle deleted document references in history without silent dangling links.
 - Clear all extension storage and IndexedDB stores/databases; verify deletion.
 - Add schema versioning and migration tests.
+
+## Backup file
+```ts
+interface BackupFile {
+  schemaVersion: number;
+  exportedAt: number;
+  profile?: UserProfile;
+  savedAnswers: SavedAnswer[];
+  messageSnippets: MessageSnippet[];
+  applications: ApplicationRecord[];
+  documents: Array<{ meta: CareerDocument; contentBase64: string }>;
+}
+```
+Validate version and contents on import; migrate older versions; confirm before overwrite.
 
 ## Privacy
 No cloud sync or external upload. Do not log profile values, documents, saved answers, or full page HTML. Content scripts receive only the values needed for the current approved action.

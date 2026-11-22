@@ -8,7 +8,7 @@ Profile data, documents, saved answers, preferences, and history stay in the bro
 - Inspect only likely application forms and necessary field metadata.
 - Do not retain full page HTML, unrelated browsing activity, or unrelated form values.
 - Send only approved values to the content script.
-- Keep scan data transient.
+- Keep scan data transient, including snapshots of values the site already holds; never log or persist them.
 
 ## Sensitive controls
 Never autofill passwords, OTPs, payment-card, bank-account, or authentication controls. Treat government identifiers, demographic/equal-opportunity answers, legal attestations, and work-authorization declarations as sensitive; exclude by default and do not infer answers. Do not bypass CAPTCHA, authentication, access controls, or site security.
@@ -32,6 +32,9 @@ Never autofill passwords, OTPs, payment-card, bank-account, or authentication co
 - Treat labels, option text, URLs, and metadata as untrusted.
 - Revalidate field references before filling because pages may rerender.
 - Avoid unsafe HTML insertion.
+
+## Clipboard
+Copy happens only on an explicit click. Do not read the clipboard, do not log copied text, and do not auto-insert text into pages. Remind users that other apps can read the clipboard.
 
 ## User control
 Detection, autofill, and document assignment are explicit actions. Show values and filenames before use. Never submit forms automatically. Provide clear-all-data and distinguish filling from submission.

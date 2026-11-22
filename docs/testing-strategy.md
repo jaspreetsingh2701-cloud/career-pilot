@@ -25,6 +25,9 @@ Create realistic fixtures for:
 5. Dynamic fields and asynchronously populated options.
 6. Resume and cover-letter file inputs.
 7. Multi-section form with unrelated search/navigation controls.
+8. Custom dropdown/combobox widgets (ARIA listbox patterns).
+9. Same-origin iframe form (spike only).
+10. Resume-parse form: fields populated asynchronously after a file upload, some correct, some different, some empty.
 
 Use synthetic data only.
 
@@ -37,6 +40,18 @@ Use synthetic data only.
 - Reload and verify persistence.
 - Clear all data and verify every store is empty.
 - Assert no form submission occurs.
+- Pre-filled fixture: only empty fields fill; matching fields report "Already filled"; different values show a conflict and stay untouched.
+- Race: fields populated between scan and fill are skipped and reported.
+- Placeholder selects count as empty; selected options, set radios/checkboxes and attached files count as filled.
+- Replace works only for the field the user opted in on; bulk approval never replaces.
+- Scan snapshots never appear in logs or storage.
+- Clipboard: copy a multi-paragraph snippet with blank lines, leading/trailing spaces, tabs, emoji and non-Latin text; read it back and assert it is byte-identical (CRLF normalized to LF).
+- Placeholders: resolved values appear; unresolved placeholders are flagged and block a silent copy.
+- Length limit and counters; blocked-clipboard fallback.
+- Manual check: paste into the LinkedIn message box and post composer, a plain-text editor, and a rich editor; record results in the compatibility matrix.
+- Export a backup, clear all data, import, and verify identical data.
+- Complete first-run onboarding with name and email only.
+- Accessibility: keyboard-only walkthrough of every side-panel screen, focus visibility, and an automated axe check.
 
 Use local fixtures first; do not automate arbitrary third-party portals without a stable, permitted test environment.
 
