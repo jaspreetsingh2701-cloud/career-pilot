@@ -1,3 +1,4 @@
+import { defineBackground } from '#imports';
 import { browser } from 'wxt/browser';
 import type { RuntimeMessage, RuntimeResponse, TabMessage } from '../src/types/messaging';
 
