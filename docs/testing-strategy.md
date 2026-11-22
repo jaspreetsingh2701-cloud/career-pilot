@@ -28,6 +28,13 @@ Verify detection, matching, option selection, filling, document management, and 
 - Backup export/restore round-trip for profile, documents, saved answers, snippets and default flags; reject unsupported schema versions and invalid document metadata.
 - Theme preference defaults to System, persists Light/Dark/System choices, and reacts to `prefers-color-scheme` changes in System mode.
 
+## M4 mapping tests
+- Exact and normalized label/alias matches, name/placeholder metadata, and saved-answer title/keyword matching.
+- Unique enabled native select/radio option matches; disabled, blank, missing, and multiple matches require review.
+- Close candidate scores return ambiguity with alternatives; weak evidence returns no-match.
+- Disabled, hidden, and read-only fields never receive suggestions.
+- Mapping is pure and does not mutate detected fields, profile values, saved answers, or the page.
+
 ## Local fixture application
 Create realistic fixtures for:
 1. Basic HTML form.
