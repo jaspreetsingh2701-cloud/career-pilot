@@ -11,6 +11,14 @@ describe('getProfileCandidateValues', () => {
       expect.objectContaining({ key: 'custom_notice', value: 'Immediate', aliases: ['joining availability', 'join date'], source: 'custom' }),
     ]));
   });
+  it('includes the selected country calling code in phone suggestions', () => {
+    const profile = { ...emptyProfile(), phone: '9876543210', phoneCountryCode: '+91' };
+    expect(getProfileCandidateValues(profile)).toEqual(expect.arrayContaining([expect.objectContaining({ key: 'phone', value: '+91 9876543210' })]));
+  });
+  it('does not duplicate a country code already present in the phone value', () => {
+    const profile = { ...emptyProfile(), phone: '+91 9876543210', phoneCountryCode: '+91' };
+    expect(getProfileCandidateValues(profile)).toEqual(expect.arrayContaining([expect.objectContaining({ key: 'phone', value: '+91 9876543210' })]));
+  });
   it('supports older profiles without customFields', () => {
     const profile = emptyProfile(); delete profile.customFields;
     expect(getProfileCandidateValues(profile)).toEqual([]);
