@@ -83,3 +83,20 @@ export async function clearLibrary(): Promise<void> {
     await new Promise<void>((resolve, reject) => { tx.oncomplete = () => resolve(); tx.onerror = () => reject(tx.error); });
   } finally { db.close(); }
 }
+
+export async function restoreLibrary(data: {
+  documents: Array<{ metadata: CareerDocument; blob: Blob }>;
+  answers: SavedAnswer[];
+  snippets: MessageSnippet[];
+}): Promise<void> {
+  const db = await openDatabase();
+  try {
+    const tx = db.transaction([DOCS, BLOBS, ANSWERS, SNIPPETS], 'readwrite');
+    const docs = tx.objectStore(DOCS), blobs = tx.objectStore(BLOBS);
+    [DOCS, BLOBS, ANSWERS, SNIPPETS].forEach(name => tx.objectStore(name).clear());
+    data.documents.forEach(({ metadata, blob }) => { docs.put(metadata); blobs.put(blob, metadata.id); });
+    data.answers.forEach(item => tx.objectStore(ANSWERS).put(item));
+    data.snippets.forEach(item => tx.objectStore(SNIPPETS).put(item));
+    await new Promise<void>((resolve, reject) => { tx.oncomplete = () => resolve(); tx.onerror = () => reject(tx.error); tx.onabort = () => reject(tx.error); });
+  } finally { db.close(); }
+}
