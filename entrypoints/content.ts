@@ -4,9 +4,15 @@ import { detectApplicationFields } from "../src/features/detection/detect-fields
 import { fillApprovedFields } from "../src/features/filling/fill-approved-fields";
 import type { TabMessage } from "../src/types/messaging";
 
+type CareerPilotWindow = typeof globalThis & { __careerPilotMessageListenerRegistered?: boolean };
+
 export default defineContentScript({
   matches: ["http://localhost/*", "http://127.0.0.1/*"],
   main() {
+    const pageGlobal = globalThis as CareerPilotWindow;
+    if (pageGlobal.__careerPilotMessageListenerRegistered) return;
+    pageGlobal.__careerPilotMessageListenerRegistered = true;
+
     browser.runtime.onMessage.addListener((message: TabMessage, sender, sendResponse) => {
       if (sender.id !== browser.runtime.id) return undefined;
       if (message.type === "CAREERPILOT_CONTENT_PING") {
