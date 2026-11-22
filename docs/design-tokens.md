@@ -38,7 +38,7 @@ Card radius 10px, button radius 8px, badge radius pill. Card padding 12px, panel
 - Loading: preserve control dimensions, expose progress/status to assistive technology, and prevent duplicate actions.
 - Respect `prefers-reduced-motion`; avoid motion as the only status cue.
 - Keep labels visible, pair status colors with text, and maintain the documented contrast target.
-- M1 ships a light theme only. Dark theme and icon family remain future design decisions; do not invent a second palette in feature work.
+- M2 supports Light, Dark, and System appearance modes. System is the default and follows `prefers-color-scheme`; an explicit Light or Dark choice overrides the operating system. Semantic color tokens are CSS variables consumed by Tailwind, so components do not hardcode theme colors.
 
 ## Design decisions
 1. **Side panel, not popup**: stays open while the user interacts with the form.
@@ -68,7 +68,7 @@ Card radius 10px, button radius 8px, badge radius pill. Card padding 12px, panel
 380px side panel. Fixed header and footer; the list scrolls in between. Designed for long forms (dozens of fields).
 
 ## Not yet specified
-Icon family; extension icon and store assets. Dark theme is explicitly out of M1 scope.
+Icon family; extension icon and store assets.
 
 ## Mockup
 Exported screens are in `docs/mockups/` (see its README). The editable source lives in a private Claude canvas and is not part of the repo.
