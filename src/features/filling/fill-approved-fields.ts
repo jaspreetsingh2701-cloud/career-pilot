@@ -61,7 +61,11 @@ export function fillApprovedFields(root: ParentNode, targets: FillTarget[]): Fil
         const option = Array.from(el.options).find(item => !item.disabled && item.value === desired);
         if (!option) return { fieldId: target.fieldId, status: 'unsupported', message: 'The approved option is no longer available.' };
       }
-      setNativeValue(el, desired);
+      if (el instanceof HTMLSelectElement) {
+        for (const item of Array.from(el.options)) item.selected = item.value === desired;
+      } else {
+        setNativeValue(el, desired);
+      }
     }
     el.dispatchEvent(new Event('input', { bubbles: true, composed: true }));
     el.dispatchEvent(new Event('change', { bubbles: true }));
