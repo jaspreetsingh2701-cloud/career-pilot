@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ChangeEvent } from 'react';
 import { browser } from 'wxt/browser';
 import { Banner } from '../../src/components/common/Banner';
 import { Button } from '../../src/components/common/Button';
@@ -53,7 +53,7 @@ export default function App() {
     catch { setStatus('Could not save your profile. Please try again.'); }
     finally { setBusy(false); }
   }
-  async function uploadDocument(event: React.ChangeEvent<HTMLInputElement>) {
+  async function uploadDocument(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
     if (!file) return;
     try {
