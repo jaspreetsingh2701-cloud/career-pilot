@@ -28,6 +28,7 @@ export default function App() {
   const [uploading, setUploading] = useState(false);
   const [dirty, setDirty] = useState(false);
   const [answerEditingId, setAnswerEditingId] = useState<string | null>(null);
+  const [customEditingId, setCustomEditingId] = useState<string | null>(null);
   const [customLabel, setCustomLabel] = useState('');
   const [customValue, setCustomValue] = useState('');
   const [customType, setCustomType] = useState<'text' | 'number' | 'date' | 'url' | 'textarea'>('text');
@@ -85,9 +86,10 @@ export default function App() {
   }
   function addCustomField() {
     if (!customLabel.trim() || !customValue.trim()) { setStatus('Add a label and value for the custom field.'); return; }
-    const field = { id: newId(), key: `custom_${newId().replace(/-/g, '')}`, label: customLabel.trim(), value: customValue, type: customType, section: customSection.trim() || 'Additional', aliases: customAliases.split(',').map(value => value.trim()).filter(Boolean) };
-    setProfile(current => ({ ...current, customFields: [...(current.customFields ?? []), field] }));
-    setDirty(true); setCustomLabel(''); setCustomValue(''); setCustomAliases(''); setStatus('Custom field added. Save your profile to keep it.');
+    const existing = (profile.customFields ?? []).find(field => field.id === customEditingId);
+    const field = { id: existing?.id ?? newId(), key: existing?.key ?? `custom_${newId().replace(/-/g, '')}`, label: customLabel.trim(), value: customValue, type: customType, section: customSection.trim() || 'Additional', aliases: customAliases.split(',').map(value => value.trim()).filter(Boolean) };
+    setProfile(current => ({ ...current, customFields: existing ? (current.customFields ?? []).map(item => item.id === existing.id ? field : item) : [...(current.customFields ?? []), field] }));
+    setDirty(true); setCustomEditingId(null); setCustomLabel(''); setCustomValue(''); setCustomAliases(''); setStatus(existing ? 'Custom field updated. Save your profile to keep it.' : 'Custom field added. Save your profile to keep it.');
   }
   async function addMessageSnippet() {
     if (!snippetTitle.trim() || !snippetBody.trim()) return;
@@ -137,8 +139,9 @@ export default function App() {
             <label className={`${labelClass} mt-3`}>Value type<select className={inputClass} value={customType} onChange={e => setCustomType(e.target.value as typeof customType)}><option value="text">Text</option><option value="number">Number</option><option value="date">Date</option><option value="url">URL</option><option value="textarea">Long text</option></select></label>
             <label className={`${labelClass} mt-3`}>Aliases (comma separated)<input className={inputClass} value={customAliases} onChange={e => setCustomAliases(e.target.value)} placeholder="current salary, present CTC" /></label>
             <label className={`${labelClass} mt-3`}>Section<input className={inputClass} value={customSection} onChange={e => setCustomSection(e.target.value)} /></label>
-            <Button className="mt-3 w-full" variant="secondary" onClick={addCustomField}>Add custom field</Button>
-            <div className="mt-3 space-y-2">{(profile.customFields ?? []).map(field => <div key={field.id} className="rounded-control border border-border p-3"><p className="text-xs font-semibold">{field.label}</p><p className="mt-1 whitespace-pre-wrap text-xs text-text-secondary">{field.value}</p><p className="mt-1 text-[11px] text-text-secondary">{field.section} · {field.aliases.join(', ') || 'No aliases'}</p><button className="mt-2 text-xs font-semibold text-danger" onClick={() => { setProfile(current => ({ ...current, customFields: (current.customFields ?? []).filter(item => item.id !== field.id) })); setDirty(true); }}>Remove</button></div>)}</div>
+            <Button className="mt-3 w-full" variant="secondary" onClick={addCustomField}>{customEditingId ? 'Update custom field' : 'Add custom field'}</Button>
+            {customEditingId && <button className="mt-2 text-xs font-semibold text-text-secondary" onClick={() => { setCustomEditingId(null); setCustomLabel(''); setCustomValue(''); setCustomAliases(''); }}>Cancel editing</button>}
+            <div className="mt-3 space-y-2">{(profile.customFields ?? []).map(field => <div key={field.id} className="rounded-control border border-border p-3"><p className="text-xs font-semibold">{field.label}</p><p className="mt-1 whitespace-pre-wrap text-xs text-text-secondary">{field.value}</p><p className="mt-1 text-[11px] text-text-secondary">{field.section} · {field.aliases.join(', ') || 'No aliases'}</p><div className="mt-2 flex gap-3"><button className="text-xs font-semibold text-accent" onClick={() => { setCustomEditingId(field.id); setCustomLabel(field.label); setCustomValue(field.value); setCustomType(field.type); setCustomAliases(field.aliases.join(', ')); setCustomSection(field.section ?? 'Additional'); }}>Edit</button><button className="text-xs font-semibold text-danger" onClick={() => { setProfile(current => ({ ...current, customFields: (current.customFields ?? []).filter(item => item.id !== field.id) })); setDirty(true); }}>Remove</button></div></div>)}</div>
           </div>
         </div>}
 
