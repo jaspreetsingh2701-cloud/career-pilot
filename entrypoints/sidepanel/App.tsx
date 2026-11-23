@@ -230,7 +230,6 @@ export default function App() {
               optionalSuggested: detectedFields.filter(field => !field.required && Boolean(mappingSuggestions.find(item => item.detectedFieldId === field.id)?.proposedValue)),
               optionalUnmatched: detectedFields.filter(field => !field.required && !mappingSuggestions.find(item => item.detectedFieldId === field.id)?.proposedValue),
             };
-            const filledRequired = fieldGroups.required.filter(field => Boolean(field.currentValue)).length;
             const renderField = (field: DetectedField) => {
               const suggestion = mappingSuggestions.find(item => item.detectedFieldId === field.id);
               const result = fillResults.find(item => item.fieldId === field.id);
