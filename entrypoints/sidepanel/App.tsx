@@ -264,6 +264,13 @@ export default function App() {
                   <button className="text-xs font-semibold text-accent" onClick={() => { setDetectedFields([]); setMappingSuggestions([]); setApprovedFields({}); setFillResults([]); setScannedTab(null); }}>Clear</button>
                 </div>
               </div>
+              {fieldGroups.required.length > 0 && <section className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-xs font-semibold">Mandatory fields</h3>
+                  <span className="text-[10px] text-text-secondary">{fieldGroups.required.filter(field => Boolean(field.currentValue)).length}/{fieldGroups.required.length} already filled</span>
+                </div>
+                {fieldGroups.required.map(renderField)}
+              </section>}
               <details className="rounded-control border border-border">
                 <summary className="flex cursor-pointer list-none items-center justify-between gap-2 px-3 py-3 text-xs font-semibold">
                   <span>Optional fields</span>
@@ -271,10 +278,7 @@ export default function App() {
                 </summary>
                 <div className="space-y-2 border-t border-border p-2">
                   {fieldGroups.optionalSuggested.map(renderField)}
-                  {fieldGroups.optionalUnmatched.length > 0 && <details className="rounded-control border border-border">
-                    <summary className="cursor-pointer px-3 py-2 text-[11px] font-semibold text-text-secondary">Fields without suggestions ({fieldGroups.optionalUnmatched.length})</summary>
-                    <div className="space-y-2 border-t border-border p-2">{fieldGroups.optionalUnmatched.map(renderField)}</div>
-                  </details>}
+                  {fieldGroups.optionalUnmatched.map(renderField)}
                   {!fieldGroups.optionalSuggested.length && !fieldGroups.optionalUnmatched.length && <p className="text-[11px] text-text-secondary">No optional fields detected.</p>}
                 </div>
               </details>
