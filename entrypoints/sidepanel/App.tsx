@@ -49,6 +49,8 @@ export default function App() {
   const [allowlistText, setAllowlistText] = useState('');
   const [blocklistText, setBlocklistText] = useState('');
   const [detectedFields, setDetectedFields] = useState<DetectedField[]>([]);
+  const [uploadFields, setUploadFields] = useState<DetectedField[]>([]);
+  const [selectedResumeIds, setSelectedResumeIds] = useState<Record<string, string>>({});
   const [mappingSuggestions, setMappingSuggestions] = useState<MappingSuggestion[]>([]);
   const [approvedFields, setApprovedFields] = useState<Record<string, boolean>>({});
   const [approvalErrors, setApprovalErrors] = useState<Record<string, string>>({});
@@ -179,6 +181,11 @@ export default function App() {
       const response = await chrome.tabs.sendMessage(activeTab.id, { type: 'DETECT_FORM_FIELDS' });
       if (!response?.ok) { setStatus(response?.error ?? 'Could not inspect this page.'); return; }
       const fields = response.fields as DetectedField[];
+      const detectedUploads = (response.uploadFields ?? []) as DetectedField[];
+      setUploadFields(detectedUploads);
+      const availableResumes = (await listDocuments()).filter(doc => doc.type === 'resume');
+      const defaultResume = availableResumes.find(doc => doc.isDefault) ?? availableResumes[0];
+      setSelectedResumeIds(Object.fromEntries(detectedUploads.map(field => [field.id, defaultResume?.id ?? ''])));
       const latestProfile = await getProfile();
 
       setScannedTab({ id: activeTab.id, url: activeTab.url });
@@ -215,7 +222,7 @@ export default function App() {
   }
   async function fillApproved() {
     const missingRequired = detectedFields.filter(field => {
-      if (!field.required || field.currentValue.trim()) return false;
+      if (field.controlType === 'file' || !field.required || field.currentValue.trim()) return false;
       const suggestion = mappingSuggestions.find(
         item => item.detectedFieldId === field.id,
       );
@@ -235,7 +242,7 @@ export default function App() {
       return;
     }
     const missingRequiredFields = detectedFields.filter(field => {
-      if (!field.required) return false;
+      if (field.controlType === 'file' || !field.required) return false;
       const suggestion = mappingSuggestions.find(
         item => item.detectedFieldId === field.id,
       );
@@ -264,13 +271,31 @@ export default function App() {
     }
 
     const selected = detectedFields.filter(field => approvedFields[field.id]);
-    if (!selected.length) { setStatus('Approve at least one field before filling.'); return; }
+    const resumeFields = uploadFields;
+    const missingResume = resumeFields.filter(field => field.required && !selectedResumeIds[field.id]);
+    if (missingResume.length) { setStatus('Select a saved resume for: ' + missingResume.map(field => field.label || 'Resume').join(', ')); return; }
+    if (!selected.length && !resumeFields.some(field => selectedResumeIds[field.id])) { setStatus('Approve at least one field or select a resume to attach.'); return; }
     setFilling(true); setFillResults([]);
     try {
       const [activeTab] = await chrome.tabs.query({ active: true, currentWindow: true });
       if (!activeTab?.id || !activeTab.url || !scannedTab || activeTab.id !== scannedTab.id || activeTab.url !== scannedTab.url) { setStatus('The active tab changed after scanning. Re-scan before filling.'); return; }
       const decision = evaluateWebsiteAccess(activeTab.url, accessRules);
       if (!decision.allowed) { setStatus(decision.reason); return; }
+      for (const field of resumeFields) {
+        const documentId = selectedResumeIds[field.id];
+        if (!documentId) continue;
+        const doc = documents.find(item => item.id === documentId && item.type === 'resume');
+        const blob = doc ? await getDocumentBlob(doc.id) : undefined;
+        if (!doc || !blob) { setStatus('The selected resume could not be read from your local document library.'); return; }
+        const dataUrl = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => typeof reader.result === 'string' ? resolve(reader.result) : reject(new Error('Could not read resume file.'));
+          reader.onerror = () => reject(reader.error ?? new Error('Could not read resume file.'));
+          reader.readAsDataURL(blob);
+        });
+        const attached = await chrome.tabs.sendMessage(activeTab.id, { type: 'ATTACH_DOCUMENT', index: field.index, name: field.name, elementId: field.elementId, fileName: doc.fileName, dataUrl });
+        if (!attached?.ok) { setStatus(attached?.message ?? 'Resume attachment failed.'); return; }
+      }
       const targets: FillTarget[] = selected.map(field => {
         const suggestion = mappingSuggestions.find(item => item.detectedFieldId === field.id);
         return {
@@ -281,12 +306,16 @@ export default function App() {
           approved: true, replaceExisting: replaceFields[field.id] === true,
         };
       }).filter(target => target.expectedValue.trim());
-      if (!targets.length) { setStatus('No approved fields have a usable value.'); return; }
-      const response = await chrome.tabs.sendMessage(activeTab.id, { type: 'FILL_APPROVED_FIELDS', targets });
-      if (!response?.ok) { setStatus(response?.error ?? 'Autofill could not be completed.'); return; }
-      setFillResults(response.results as FillResult[]);
-      const filled = (response.results as FillResult[]).filter(item => item.status === 'filled').length;
-      setStatus(`Fill finished: ${filled} field(s) updated. Review the results and page before submitting manually.`);
+      if (!targets.length && !resumeFields.some(field => selectedResumeIds[field.id])) { setStatus('No approved fields have a usable value.'); return; }
+      let filled = 0;
+      if (targets.length) {
+        const response = await chrome.tabs.sendMessage(activeTab.id, { type: 'FILL_APPROVED_FIELDS', targets });
+        if (!response?.ok) { setStatus(response?.error ?? 'Autofill could not be completed.'); return; }
+        setFillResults(response.results as FillResult[]);
+        filled = (response.results as FillResult[]).filter(item => item.status === 'filled').length;
+      }
+      const attachedCount = resumeFields.filter(field => selectedResumeIds[field.id]).length;
+      setStatus(`Fill finished: ${filled} field(s) updated and ${attachedCount} document(s) attached. Review the page and submit manually.`);
     } catch (error) { setStatus(error instanceof Error ? 'Autofill failed: ' + error.message : 'Autofill failed.'); }
     finally { setFilling(false); }
   }
