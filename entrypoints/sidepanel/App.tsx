@@ -49,6 +49,8 @@ export default function App() {
   const [allowlistText, setAllowlistText] = useState('');
   const [blocklistText, setBlocklistText] = useState('');
   const [detectedFields, setDetectedFields] = useState<DetectedField[]>([]);
+  const [uploadFields, setUploadFields] = useState<DetectedField[]>([]);
+  const [selectedResumeIds, setSelectedResumeIds] = useState<Record<string, string>>({});
   const [mappingSuggestions, setMappingSuggestions] = useState<MappingSuggestion[]>([]);
   const [approvedFields, setApprovedFields] = useState<Record<string, boolean>>({});
   const [approvalErrors, setApprovalErrors] = useState<Record<string, string>>({});
@@ -179,6 +181,11 @@ export default function App() {
       const response = await chrome.tabs.sendMessage(activeTab.id, { type: 'DETECT_FORM_FIELDS' });
       if (!response?.ok) { setStatus(response?.error ?? 'Could not inspect this page.'); return; }
       const fields = response.fields as DetectedField[];
+      const detectedUploads = (response.uploadFields ?? []) as DetectedField[];
+      setUploadFields(detectedUploads);
+      const availableResumes = (await listDocuments()).filter(doc => doc.type === 'resume');
+      const defaultResume = availableResumes.find(doc => doc.isDefault) ?? availableResumes[0];
+      setSelectedResumeIds(Object.fromEntries(detectedUploads.map(field => [field.id, defaultResume?.id ?? ''])));
       const latestProfile = await getProfile();
 
       setScannedTab({ id: activeTab.id, url: activeTab.url });
@@ -209,13 +216,13 @@ export default function App() {
           }),
         ),
       );
-      setStatus(fields.length ? `Detected ${fields.length} fields. Review every suggestion before filling.` : 'No supported form fields were found on this page.');
+      setStatus(fields.length || detectedUploads.length ? `Detected ${fields.length} form fields and ${detectedUploads.length} document upload field(s). Review before filling.` : 'No supported form fields were found on this page.');
     } catch (error) { setStatus(error instanceof Error ? 'Detection unavailable: ' + error.message : 'Detection is unavailable on this page.'); }
     finally { setScanning(false); }
   }
   async function fillApproved() {
     const missingRequired = detectedFields.filter(field => {
-      if (!field.required || field.currentValue.trim()) return false;
+      if (field.controlType === 'file' || !field.required || field.currentValue.trim()) return false;
       const suggestion = mappingSuggestions.find(
         item => item.detectedFieldId === field.id,
       );
@@ -235,7 +242,7 @@ export default function App() {
       return;
     }
     const missingRequiredFields = detectedFields.filter(field => {
-      if (!field.required) return false;
+      if (field.controlType === 'file' || !field.required) return false;
       const suggestion = mappingSuggestions.find(
         item => item.detectedFieldId === field.id,
       );
@@ -264,13 +271,31 @@ export default function App() {
     }
 
     const selected = detectedFields.filter(field => approvedFields[field.id]);
-    if (!selected.length) { setStatus('Approve at least one field before filling.'); return; }
+    const resumeFields = uploadFields;
+    const missingResume = resumeFields.filter(field => field.required && !selectedResumeIds[field.id]);
+    if (missingResume.length) { setStatus('Select a saved resume for: ' + missingResume.map(field => field.label || 'Resume').join(', ')); return; }
+    if (!selected.length && !resumeFields.some(field => selectedResumeIds[field.id])) { setStatus('Approve at least one field or select a resume to attach.'); return; }
     setFilling(true); setFillResults([]);
     try {
       const [activeTab] = await chrome.tabs.query({ active: true, currentWindow: true });
       if (!activeTab?.id || !activeTab.url || !scannedTab || activeTab.id !== scannedTab.id || activeTab.url !== scannedTab.url) { setStatus('The active tab changed after scanning. Re-scan before filling.'); return; }
       const decision = evaluateWebsiteAccess(activeTab.url, accessRules);
       if (!decision.allowed) { setStatus(decision.reason); return; }
+      for (const field of resumeFields) {
+        const documentId = selectedResumeIds[field.id];
+        if (!documentId) continue;
+        const doc = documents.find(item => item.id === documentId && item.type === 'resume');
+        const blob = doc ? await getDocumentBlob(doc.id) : undefined;
+        if (!doc || !blob) { setStatus('The selected resume could not be read from your local document library.'); return; }
+        const dataUrl = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => typeof reader.result === 'string' ? resolve(reader.result) : reject(new Error('Could not read resume file.'));
+          reader.onerror = () => reject(reader.error ?? new Error('Could not read resume file.'));
+          reader.readAsDataURL(blob);
+        });
+        const attached = await chrome.tabs.sendMessage(activeTab.id, { type: 'ATTACH_DOCUMENT', index: field.index, name: field.name, elementId: field.elementId, fileName: doc.fileName, dataUrl });
+        if (!attached?.ok) { setStatus(attached?.message ?? 'Resume attachment failed.'); return; }
+      }
       const targets: FillTarget[] = selected.map(field => {
         const suggestion = mappingSuggestions.find(item => item.detectedFieldId === field.id);
         return {
@@ -281,12 +306,16 @@ export default function App() {
           approved: true, replaceExisting: replaceFields[field.id] === true,
         };
       }).filter(target => target.expectedValue.trim());
-      if (!targets.length) { setStatus('No approved fields have a usable value.'); return; }
-      const response = await chrome.tabs.sendMessage(activeTab.id, { type: 'FILL_APPROVED_FIELDS', targets });
-      if (!response?.ok) { setStatus(response?.error ?? 'Autofill could not be completed.'); return; }
-      setFillResults(response.results as FillResult[]);
-      const filled = (response.results as FillResult[]).filter(item => item.status === 'filled').length;
-      setStatus(`Fill finished: ${filled} field(s) updated. Review the results and page before submitting manually.`);
+      if (!targets.length && !resumeFields.some(field => selectedResumeIds[field.id])) { setStatus('No approved fields have a usable value.'); return; }
+      let filled = 0;
+      if (targets.length) {
+        const response = await chrome.tabs.sendMessage(activeTab.id, { type: 'FILL_APPROVED_FIELDS', targets });
+        if (!response?.ok) { setStatus(response?.error ?? 'Autofill could not be completed.'); return; }
+        setFillResults(response.results as FillResult[]);
+        filled = (response.results as FillResult[]).filter(item => item.status === 'filled').length;
+      }
+      const attachedCount = resumeFields.filter(field => selectedResumeIds[field.id]).length;
+      setStatus(`Fill finished: ${filled} field(s) updated and ${attachedCount} document(s) attached. Review the page and submit manually.`);
     } catch (error) { setStatus(error instanceof Error ? 'Autofill failed: ' + error.message : 'Autofill failed.'); }
     finally { setFilling(false); }
   }
@@ -412,7 +441,7 @@ export default function App() {
           <SectionHeader title="Document library" count={documents.length} />
           <Button className="mb-3 w-full" onClick={() => void detectCurrentForm()}>Detect fields on active tab</Button>
           {scanning && <p className="mb-3 text-xs text-accent" role="status">Scanning active tab…</p>}
-          {detectedFields.length > 0 && (() => {
+          {(detectedFields.length > 0 || uploadFields.length > 0) && (() => {
             const fieldGroups = {
               required: detectedFields.filter(field => field.required),
               optionalSuggested: detectedFields.filter(field => !field.required && Boolean(mappingSuggestions.find(item => item.detectedFieldId === field.id)?.proposedValue)),
@@ -508,6 +537,21 @@ export default function App() {
                   <button className="text-xs font-semibold text-accent" onClick={() => { setDetectedFields([]); setMappingSuggestions([]); setApprovedFields({}); setFillResults([]); setScannedTab(null); }}>Clear</button>
                 </div>
               </div>
+              {uploadFields.length > 0 && <section className="space-y-2 rounded-control border border-border p-3">
+                <h3 className="text-xs font-semibold">Resume attachments</h3>
+                <p className="text-[10px] text-text-secondary">Your default resume is preselected. You can choose another saved resume for this application.</p>
+                {uploadFields.map(field => {
+                  const resumes = documents.filter(doc => doc.type === 'resume');
+                  return <label key={field.id} className="block text-[11px] font-medium">
+                    <span>{field.label || field.name || 'Resume'}{field.required ? ' · Required' : ' · Optional'}</span>
+                    <select className={inputClass} value={selectedResumeIds[field.id] ?? ''} onChange={event => setSelectedResumeIds(current => ({ ...current, [field.id]: event.target.value }))}>
+                      <option value="">Choose a saved resume</option>
+                      {resumes.map(doc => <option key={doc.id} value={doc.id}>{doc.name}{doc.isDefault ? ' (Default)' : ''}</option>)}
+                    </select>
+                    {!resumes.length && <span className="mt-1 block text-danger">Upload a resume to your document library first.</span>}
+                  </label>;
+                })}
+              </section>}
               {fieldGroups.required.length > 0 && <section className="space-y-2">
                 <div className="flex items-center justify-between">
                   <h3 className="text-xs font-semibold">Mandatory fields</h3>
@@ -527,12 +571,12 @@ export default function App() {
                 </div>
               </details>
               <div className="sticky bottom-0 z-10 -mx-3 space-y-1 border-t border-border bg-card/95 px-3 pb-2 pt-3 backdrop-blur">
-                <Button className="w-full" onClick={() => void fillApproved()} disabled={filling || !Object.values(approvedFields).some(Boolean)}>{filling ? 'Filling…' : `Fill approved fields (${detectedFields.filter(field => approvedFields[field.id]).length})`}</Button>
+                <Button className="w-full" onClick={() => void fillApproved()} disabled={filling || (!Object.values(approvedFields).some(Boolean) && !Object.values(selectedResumeIds).some(Boolean))}>{filling ? 'Filling…' : `Fill approved fields (${detectedFields.filter(field => approvedFields[field.id]).length})`}</Button>
                 <p className="text-center text-[10px] text-text-secondary">Review the page and submit manually. CareerPilot never submits forms.</p>
               </div>
             </div>;
           })()}
-          <p className="mb-3 mt-2 text-xs leading-5 text-text-secondary">Add your resume and cover letter here first. The library stores them locally; until form attachment is implemented, download a copy to upload manually. The intended application flow is resume first, then remaining fields from your profile and saved answers. Uploading a document does not change your profile. PDF, DOC or DOCX up to 5 MB.</p>
+          <p className="mb-3 mt-2 text-xs leading-5 text-text-secondary">Add your resume and cover letter here first. The library stores them locally. CareerPilot can attach saved resumes to supported native upload fields; custom upload widgets may still require manual upload. The intended application flow is resume first, then remaining fields from your profile and saved answers. Uploading a document does not change your profile. PDF, DOC or DOCX up to 5 MB.</p>
           <label className={labelClass}>Document type<select className={inputClass} value={documentType} onChange={e => setDocumentType(e.target.value as DocumentType)}><option value="resume">Resume</option><option value="cover-letter">Cover letter</option><option value="other">Other</option></select></label><label className="mt-3 block text-xs font-semibold text-text-secondary">Import document<input type="file" accept=".pdf,.doc,.docx" disabled={uploading} onChange={uploadDocument} className="mt-2 block w-full text-xs file:mr-2 file:min-h-10 file:rounded-control file:border-0 file:bg-accent file:px-3 file:text-white" /></label>
           {uploading && <p className="mt-2 text-xs text-accent" role="status">Uploading selected document…</p>}
           <div className="mt-4 space-y-2">{documents.map(doc => <div key={doc.id} className="rounded-control border border-border p-3">

@@ -1,8 +1,17 @@
 export type ContentScriptReadyMessage = { type: "CONTENT_SCRIPT_READY"; url: string };
 export type PingActiveTabMessage = { type: "PING_ACTIVE_TAB" };
 export type RuntimeMessage = ContentScriptReadyMessage | PingActiveTabMessage;
+export type DocumentAttachmentMessage = {
+  type: "ATTACH_DOCUMENT";
+  index: number;
+  name?: string;
+  elementId?: string;
+  fileName: string;
+  dataUrl: string;
+};
 export type TabMessage =
   | { type: "CAREERPILOT_CONTENT_PING" }
   | { type: "DETECT_FORM_FIELDS" }
+  | DocumentAttachmentMessage
   | { type: "FILL_APPROVED_FIELDS"; targets: import('../features/filling/fill-approved-fields').FillTarget[] };
 export type RuntimeResponse = { ok: true; message: string } | { ok: false; error: string };
