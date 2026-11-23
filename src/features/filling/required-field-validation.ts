@@ -18,7 +18,7 @@ export function isDocumentUploadField(field: RequiredFieldCandidate): boolean {
       field.name,
       field.elementId,
       field.placeholder,
-    ].filter(Boolean).join(' '));
+    ].filter(Boolean).join(' ').replace(/[_-]+/g, ' '));
 }
 
 export function isMissingRequiredTextValue(
