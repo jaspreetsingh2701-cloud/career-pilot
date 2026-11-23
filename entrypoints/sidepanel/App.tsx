@@ -57,7 +57,6 @@ export default function App() {
   const [scanning, setScanning] = useState(false);
   const [filling, setFilling] = useState(false);
   const [scannedTab, setScannedTab] = useState<{ id: number; url: string } | null>(null);
-  const [showOptionalFields, setShowOptionalFields] = useState(false);
 
   async function refreshLibrary() {
     const [docs, savedAnswers, savedSnippets] = await Promise.all([listDocuments(), listAnswers(), listSnippets()]);
