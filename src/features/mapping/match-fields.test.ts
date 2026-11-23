@@ -126,4 +126,51 @@ describe('suggestFieldMappings', () => {
     expect(result.proposedValue).toBe('Delhi');
     expect(result.candidate).toMatchObject({ kind: 'profile', key: 'custom_city' });
   });
+
+  it('prefers a custom City field for Current city instead of the built-in location alias', () => {
+    const values: ProfileCandidateValue[] = [
+      {
+        key: 'currentLocation',
+        label: 'Current location',
+        value: 'Noida',
+        aliases: ['city', 'location', 'current city'],
+        source: 'standard',
+      },
+      {
+        key: 'custom_city',
+        label: 'City',
+        value: 'Delhi',
+        aliases: ['town'],
+        source: 'custom',
+      },
+    ];
+    const [result] = suggestFieldMappings({
+      fields: [field({ label: 'Current city' })],
+      profileValues: values,
+      savedAnswers: [],
+    });
+
+    expect(result.status).toBe('suggested');
+    expect(result.proposedValue).toBe('Delhi');
+    expect(result.candidate).toMatchObject({ kind: 'profile', key: 'custom_city' });
+  });
+
+  it('matches a custom field from the input name when the visible label is missing', () => {
+    const [result] = suggestFieldMappings({
+      fields: [field({ label: '', name: 'city' })],
+      profileValues: [
+        {
+          key: 'custom_city',
+          label: 'City',
+          value: 'Delhi',
+          aliases: ['city'],
+          source: 'custom',
+        },
+      ],
+      savedAnswers: [],
+    });
+
+    expect(result.proposedValue).toBe('Delhi');
+    expect(result.candidate).toMatchObject({ kind: 'profile', key: 'custom_city' });
+  });
 });

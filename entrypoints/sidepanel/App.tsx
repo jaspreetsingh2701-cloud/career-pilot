@@ -274,26 +274,78 @@ export default function App() {
             <label className={`${labelClass} mt-3`}>Section<input className={inputClass} value={customSection} onChange={e => setCustomSection(e.target.value)} /></label>
             <Button className="mt-3 w-full" variant="secondary" onClick={addCustomField}>{customEditingId ? 'Update custom field' : 'Add custom field'}</Button>
             {customEditingId && <button className="mt-2 text-xs font-semibold text-text-secondary" onClick={() => { setCustomEditingId(null); setCustomLabel(''); setCustomValue(''); setCustomAliases(''); }}>Cancel editing</button>}
-            <div className="mt-3 space-y-2">{(profile.customFields ?? []).map(field => <div key={field.id} className="rounded-control border border-border p-3"><p className="text-xs font-semibold">{field.label}</p><p className="mt-1 whitespace-pre-wrap text-xs text-text-secondary">{field.value}</p><p className="mt-1 text-[11px] text-text-secondary">{field.section} · {field.aliases.join(', ') || 'No aliases'}</p><div className="mt-2 flex gap-3"><button className="text-xs font-semibold text-accent" onClick={() => { setCustomEditingId(field.id); setCustomLabel(field.label); setCustomValue(field.value); setCustomType(field.type); setCustomAliases(field.aliases.join(', ')); setCustomSection(field.section ?? 'Additional'); }}>Edit</button><button className="text-xs font-semibold text-danger" onClick={async () => {
-                  const nextProfile = {
-                    ...profile,
-                    customFields: (profile.customFields ?? []).filter(
-                      item => item.id !== field.id,
-                    ),
-                  };
-                  try {
-                    const savedProfile = await saveProfile(nextProfile);
-                    setProfile(savedProfile);
-                    setDirty(false);
-                    setStatus('Custom field removed.');
-                  } catch (error) {
-                    setStatus(
-                      error instanceof Error
-                        ? `Could not remove custom field: ${error.message}`
-                        : 'Could not remove custom field.',
-                    );
-                  }
-                }}>Remove</button></div></div>)}</div>
+            <div className="mt-3 overflow-x-auto rounded-control border border-border">
+              <table className="w-full min-w-[520px] border-collapse text-left text-xs">
+                <thead className="bg-muted/50 text-[10px] uppercase tracking-wide text-text-secondary">
+                  <tr>
+                    <th className="px-3 py-2 font-semibold">Field</th>
+                    <th className="px-3 py-2 font-semibold">Value</th>
+                    <th className="px-3 py-2 font-semibold">Aliases</th>
+                    <th className="px-3 py-2 font-semibold">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(profile.customFields ?? []).map(field => (
+                    <tr key={field.id} className="border-t border-border align-top">
+                      <td className="px-3 py-3 font-semibold">{field.label}</td>
+                      <td className="px-3 py-3 whitespace-pre-wrap">{field.value}</td>
+                      <td className="px-3 py-3 text-text-secondary">
+                        {field.aliases.join(', ') || '—'}
+                      </td>
+                      <td className="px-3 py-3">
+                        <div className="flex gap-3">
+                          <button
+                            className="font-semibold text-accent"
+                            onClick={() => {
+                              setCustomEditingId(field.id);
+                              setCustomLabel(field.label);
+                              setCustomValue(field.value);
+                              setCustomType(field.type);
+                              setCustomAliases(field.aliases.join(', '));
+                              setCustomSection(field.section ?? 'Additional');
+                            }}
+                          >
+                            Edit
+                          </button>
+                          <button
+                            className="font-semibold text-danger"
+                            onClick={async () => {
+                              const nextProfile = {
+                                ...profile,
+                                customFields: (profile.customFields ?? []).filter(
+                                  item => item.id !== field.id,
+                                ),
+                              };
+                              try {
+                                const savedProfile = await saveProfile(nextProfile);
+                                setProfile(savedProfile);
+                                setDirty(false);
+                                setStatus('Custom field removed.');
+                              } catch (error) {
+                                setStatus(
+                                  error instanceof Error
+                                    ? `Could not remove custom field: ${error.message}`
+                                    : 'Could not remove custom field.',
+                                );
+                              }
+                            }}
+                          >
+                            Remove
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                  {!(profile.customFields ?? []).length && (
+                    <tr>
+                      <td colSpan={4} className="px-3 py-5 text-center text-text-secondary">
+                        No custom fields added yet.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>}
 
