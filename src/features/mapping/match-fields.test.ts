@@ -96,4 +96,34 @@ describe('suggestFieldMappings', () => {
     ] })], profileValues: profile, savedAnswers: [] });
     expect(result.status).toBe('needs-review');
   });
+
+  it('prefers an exact custom field label over a built-in alias', () => {
+    const values: ProfileCandidateValue[] = [
+      {
+        key: 'currentLocation',
+        label: 'Current location',
+        value: 'Noida',
+        aliases: ['city', 'location', 'current city'],
+        source: 'standard',
+        section: 'Contact',
+      },
+      {
+        key: 'custom_city',
+        label: 'City',
+        value: 'Delhi',
+        aliases: [],
+        source: 'custom',
+        section: 'Additional',
+      },
+    ];
+    const [result] = suggestFieldMappings({
+      fields: [field({ label: 'City' })],
+      profileValues: values,
+      savedAnswers: [],
+    });
+
+    expect(result.status).toBe('suggested');
+    expect(result.proposedValue).toBe('Delhi');
+    expect(result.candidate).toMatchObject({ kind: 'profile', key: 'custom_city' });
+  });
 });
