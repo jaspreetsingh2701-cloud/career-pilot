@@ -8,7 +8,7 @@ export interface RequiredFieldCandidate {
   placeholder?: string;
 }
 
-const DOCUMENT_UPLOAD_LABEL = /\\b(resume|résumé|cv|curriculum vitae)\\b/i;
+const DOCUMENT_UPLOAD_LABEL = /\b(resume|résumé|cv|curriculum vitae)\b/i;
 
 /** Document upload controls are validated by the attachment flow, not text-value validation. */
 export function isDocumentUploadField(field: RequiredFieldCandidate): boolean {
