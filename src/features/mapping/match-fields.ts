@@ -104,13 +104,13 @@ export function suggestFieldMappings(input: MappingInput): MappingSuggestion[] {
   const candidates = [...profileCandidates(input.profileValues), ...answerCandidates(input.savedAnswers)];
   return input.fields.map(field => {
     if (field.disabled || field.readOnly || field.hidden) {
-      return { detectedFieldId: field.id, candidate: { kind: 'profile', key: '', label: '', value: '', aliases: [] }, proposedValue: '', confidence: 0, reasons: ['Field is not editable'], status: 'no-match' };
+      return { detectedFieldId: field.id, candidate: { kind: 'profile', key: '', label: '', value: '', aliases: [], source: 'standard' }, proposedValue: '', confidence: 0, reasons: ['Field is not editable'], status: 'no-match' };
     }
     const ranked = candidates.map(candidate => ({ candidate, ...candidateScore(field, candidate) }))
       .filter(item => item.score > 0)
       .sort((a, b) => b.score - a.score);
     if (!ranked.length || ranked[0].score < 45) {
-      return { detectedFieldId: field.id, candidate: { kind: 'profile', key: '', label: '', value: '', aliases: [] }, proposedValue: '', confidence: 0, reasons: ['No sufficiently strong metadata match'], status: 'no-match' };
+      return { detectedFieldId: field.id, candidate: { kind: 'profile', key: '', label: '', value: '', aliases: [], source: 'standard' }, proposedValue: '', confidence: 0, reasons: ['No sufficiently strong metadata match'], status: 'no-match' };
     }
     const top = ranked[0];
     const tied = ranked.filter(item => top.score - item.score < 15);
