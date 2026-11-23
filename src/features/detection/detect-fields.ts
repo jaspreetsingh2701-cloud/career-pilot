@@ -9,7 +9,14 @@ export function detectApplicationFields(root:ParentNode=document):DetectedField[
   const identity=[el.name,el.id,el.getAttribute("autocomplete"),el.getAttribute("aria-label"),el.getAttribute("placeholder"),el.labels?Array.from(el.labels).map(x=>x.innerText).join(" "):""].filter(Boolean).join(" ");
   if(SENSITIVE.test(identity)||EXCLUDED.has(type)||el.disabled||("readOnly" in el && el.readOnly)||el.getAttribute("aria-hidden")==="true")return [];
   const style=window.getComputedStyle(el); const hidden=el.hidden||style.display==="none"||style.visibility==="hidden"; if(hidden)return [];
-  const rawLabel=(el.labels?Array.from(el.labels).map(x=>x.innerText).join(" "):"")||el.getAttribute("aria-label")||el.getAttribute("title")||"";
+  const labelledBy = el.getAttribute("aria-labelledby");
+  const labelledByText = labelledBy
+    ? labelledBy.split(/\\s+/).map(id => {
+        const node = root.querySelector<HTMLElement>("#" + CSS.escape(id));
+        return node?.innerText ?? node?.textContent ?? "";
+      }).filter(Boolean).join(" ")
+    : "";
+  const rawLabel=(el.labels?Array.from(el.labels).map(x=>x.innerText).join(" "):"")||labelledByText||el.getAttribute("aria-label")||el.getAttribute("title")||"";
   // Some application forms mark required fields visually with a trailing asterisk only.
   const requiredMarker=/\*\s*$/.test(rawLabel.trim());
   const label=rawLabel.replace(/\s*\*\s*$/,"").trim();
