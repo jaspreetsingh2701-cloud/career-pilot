@@ -508,6 +508,21 @@ export default function App() {
                   <button className="text-xs font-semibold text-accent" onClick={() => { setDetectedFields([]); setMappingSuggestions([]); setApprovedFields({}); setFillResults([]); setScannedTab(null); }}>Clear</button>
                 </div>
               </div>
+              {uploadFields.length > 0 && <section className="space-y-2 rounded-control border border-border p-3">
+                <h3 className="text-xs font-semibold">Resume attachments</h3>
+                <p className="text-[10px] text-text-secondary">Your default resume is preselected. You can choose another saved resume for this application.</p>
+                {uploadFields.map(field => {
+                  const resumes = documents.filter(doc => doc.type === 'resume');
+                  return <label key={field.id} className="block text-[11px] font-medium">
+                    <span>{field.label || field.name || 'Resume'}{field.required ? ' · Required' : ' · Optional'}</span>
+                    <select className={inputClass} value={selectedResumeIds[field.id] ?? ''} onChange={event => setSelectedResumeIds(current => ({ ...current, [field.id]: event.target.value }))}>
+                      <option value="">Choose a saved resume</option>
+                      {resumes.map(doc => <option key={doc.id} value={doc.id}>{doc.name}{doc.isDefault ? ' (Default)' : ''}</option>)}
+                    </select>
+                    {!resumes.length && <span className="mt-1 block text-danger">Upload a resume to your document library first.</span>}
+                  </label>;
+                })}
+              </section>}
               {fieldGroups.required.length > 0 && <section className="space-y-2">
                 <div className="flex items-center justify-between">
                   <h3 className="text-xs font-semibold">Mandatory fields</h3>
@@ -527,12 +542,12 @@ export default function App() {
                 </div>
               </details>
               <div className="sticky bottom-0 z-10 -mx-3 space-y-1 border-t border-border bg-card/95 px-3 pb-2 pt-3 backdrop-blur">
-                <Button className="w-full" onClick={() => void fillApproved()} disabled={filling || !Object.values(approvedFields).some(Boolean)}>{filling ? 'Filling…' : `Fill approved fields (${detectedFields.filter(field => approvedFields[field.id]).length})`}</Button>
+                <Button className="w-full" onClick={() => void fillApproved()} disabled={filling || (!Object.values(approvedFields).some(Boolean) && !Object.values(selectedResumeIds).some(Boolean))}>{filling ? 'Filling…' : `Fill approved fields (${detectedFields.filter(field => approvedFields[field.id]).length})`}</Button>
                 <p className="text-center text-[10px] text-text-secondary">Review the page and submit manually. CareerPilot never submits forms.</p>
               </div>
             </div>;
           })()}
-          <p className="mb-3 mt-2 text-xs leading-5 text-text-secondary">Add your resume and cover letter here first. The library stores them locally; until form attachment is implemented, download a copy to upload manually. The intended application flow is resume first, then remaining fields from your profile and saved answers. Uploading a document does not change your profile. PDF, DOC or DOCX up to 5 MB.</p>
+          <p className="mb-3 mt-2 text-xs leading-5 text-text-secondary">Add your resume and cover letter here first. The library stores them locally. CareerPilot can attach saved resumes to supported native upload fields; custom upload widgets may still require manual upload. The intended application flow is resume first, then remaining fields from your profile and saved answers. Uploading a document does not change your profile. PDF, DOC or DOCX up to 5 MB.</p>
           <label className={labelClass}>Document type<select className={inputClass} value={documentType} onChange={e => setDocumentType(e.target.value as DocumentType)}><option value="resume">Resume</option><option value="cover-letter">Cover letter</option><option value="other">Other</option></select></label><label className="mt-3 block text-xs font-semibold text-text-secondary">Import document<input type="file" accept=".pdf,.doc,.docx" disabled={uploading} onChange={uploadDocument} className="mt-2 block w-full text-xs file:mr-2 file:min-h-10 file:rounded-control file:border-0 file:bg-accent file:px-3 file:text-white" /></label>
           {uploading && <p className="mt-2 text-xs text-accent" role="status">Uploading selected document…</p>}
           <div className="mt-4 space-y-2">{documents.map(doc => <div key={doc.id} className="rounded-control border border-border p-3">
