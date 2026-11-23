@@ -216,7 +216,7 @@ export default function App() {
           }),
         ),
       );
-      setStatus(fields.length ? `Detected ${fields.length} fields. Review every suggestion before filling.` : 'No supported form fields were found on this page.');
+      setStatus(fields.length || detectedUploads.length ? `Detected ${fields.length} form fields and ${detectedUploads.length} document upload field(s). Review before filling.` : 'No supported form fields were found on this page.');
     } catch (error) { setStatus(error instanceof Error ? 'Detection unavailable: ' + error.message : 'Detection is unavailable on this page.'); }
     finally { setScanning(false); }
   }
@@ -441,7 +441,7 @@ export default function App() {
           <SectionHeader title="Document library" count={documents.length} />
           <Button className="mb-3 w-full" onClick={() => void detectCurrentForm()}>Detect fields on active tab</Button>
           {scanning && <p className="mb-3 text-xs text-accent" role="status">Scanning active tab…</p>}
-          {detectedFields.length > 0 && (() => {
+          {(detectedFields.length > 0 || uploadFields.length > 0) && (() => {
             const fieldGroups = {
               required: detectedFields.filter(field => field.required),
               optionalSuggested: detectedFields.filter(field => !field.required && Boolean(mappingSuggestions.find(item => item.detectedFieldId === field.id)?.proposedValue)),
