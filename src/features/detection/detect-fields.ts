@@ -10,8 +10,8 @@ export function detectApplicationFields(root:ParentNode=document):DetectedField[
   if(SENSITIVE.test(identity)||EXCLUDED.has(type)||el.disabled||("readOnly" in el && el.readOnly)||el.getAttribute("aria-hidden")==="true")return [];
   const style=window.getComputedStyle(el); const hidden=el.hidden||style.display==="none"||style.visibility==="hidden"; if(hidden)return [];
   const rawLabel=(el.labels?Array.from(el.labels).map(x=>x.innerText).join(" "):"")||el.getAttribute("aria-label")||el.getAttribute("title")||"";
-  const requiredMarker=/\\*\\s*$/.test(rawLabel.trim());
-  const label=rawLabel.replace(/\\s*\\*\\s*$/,"").trim();
+  const requiredMarker=/\*\s*$/.test(rawLabel.trim());
+  const label=rawLabel.replace(/\s*\*\s*$/,"").trim();
   const required=el.required||el.getAttribute("aria-required")==="true"||requiredMarker;
   const options=el instanceof HTMLSelectElement?Array.from(el.options).map(o=>({label:o.label.trim(),value:o.value,selected:o.selected,disabled:o.disabled})):undefined;
   return [{id:el.id||((el.name||"field")+"-"+index),index,tagName:el.tagName.toLowerCase(),controlType:type,name:el.name||undefined,elementId:el.id||undefined,label,placeholder:el.getAttribute("placeholder")||undefined,accessibleDescription:el.getAttribute("aria-description")||undefined,helperText:described(root,el.getAttribute("aria-describedby"))||undefined,exampleText:el.getAttribute("data-example")||el.getAttribute("title")||undefined,currentValue:el instanceof HTMLInputElement&&el.type==="checkbox"?String(el.checked):el.value,required,disabled:el.disabled,readOnly:"readOnly" in el ? el.readOnly : false,hidden,options}];
