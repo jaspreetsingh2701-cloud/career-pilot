@@ -15,6 +15,7 @@ import { suggestFieldMappings, type MappingSuggestion } from '../../src/features
 import { getProfileCandidateValues } from '../../src/features/profile/utils/profile-field-mapper';
 import type { DetectedField } from '../../src/features/detection/detect-fields';
 import type { FillResult, FillTarget } from '../../src/features/filling/fill-approved-fields';
+import { isMissingRequiredTextValue } from '../../src/features/filling/required-field-validation';
 
 type Tab = 'documents' | 'profile' | 'answers' | 'settings';
 const inputClass = 'mt-1 min-h-11 w-full rounded-control border border-border-input bg-card px-3 text-sm text-text-primary placeholder:text-text-secondary';
@@ -221,28 +222,7 @@ export default function App() {
     finally { setScanning(false); }
   }
   async function fillApproved() {
-    const missingRequired = detectedFields.filter(field => {
-      if (field.controlType === 'file' || !field.required || field.currentValue.trim()) return false;
-      const suggestion = mappingSuggestions.find(
-        item => item.detectedFieldId === field.id,
-      );
-      const value =
-        editedValues[field.id] ??
-        suggestion?.selectedOption?.value ??
-        suggestion?.proposedValue ??
-        '';
-      return !value.trim();
-    });
-    if (missingRequired.length) {
-      setStatus(
-        `Required fields need values before filling: ${missingRequired
-          .map(field => field.label || field.name || field.elementId || 'Unnamed field')
-          .join(', ')}.`,
-      );
-      return;
-    }
     const missingRequiredFields = detectedFields.filter(field => {
-      if (field.controlType === 'file' || !field.required) return false;
       const suggestion = mappingSuggestions.find(
         item => item.detectedFieldId === field.id,
       );
@@ -251,7 +231,7 @@ export default function App() {
         suggestion?.selectedOption?.value ??
         suggestion?.proposedValue ??
         '';
-      return !value.trim();
+      return isMissingRequiredTextValue(field, value);
     });
 
     if (missingRequiredFields.length) {
@@ -262,10 +242,11 @@ export default function App() {
         ]),
       );
       setApprovalErrors(current => ({ ...current, ...errors }));
+      const labels = missingRequiredFields.map(
+        field => field.label || field.name || field.elementId || 'Unnamed field',
+      );
       setStatus(
-        `Add values for the following mandatory fields: ${missingRequiredFields
-          .map(field => field.label || field.name || 'Unnamed field')
-          .join(', ')}.`,
+        `Add values for the following mandatory fields: ${labels.join(', ')}.`,
       );
       return;
     }
