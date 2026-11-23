@@ -265,19 +265,20 @@ export default function App() {
                   <button className="text-xs font-semibold text-accent" onClick={() => { setDetectedFields([]); setMappingSuggestions([]); setApprovedFields({}); setFillResults([]); setScannedTab(null); }}>Clear</button>
                 </div>
               </div>
-              <section className="space-y-2">
-                <div className="flex items-center justify-between"><h3 className="text-xs font-semibold">Mandatory fields</h3><span className="text-[10px] text-text-secondary">{filledRequired} filled · {fieldGroups.required.length - filledRequired} empty</span></div>
-                {fieldGroups.required.length ? fieldGroups.required.map(renderField) : <p className="rounded-control bg-muted p-3 text-[11px] text-text-secondary">No mandatory fields detected.</p>}
-              </section>
-              <section className="space-y-2">
-                <div className="flex items-center justify-between"><h3 className="text-xs font-semibold">Optional fields</h3><span className="text-[10px] text-text-secondary">{fieldGroups.optionalSuggested.length} with suggestions</span></div>
-                {fieldGroups.optionalSuggested.map(renderField)}
-                {fieldGroups.optionalUnmatched.length > 0 && <details className="rounded-control border border-border">
-                  <summary className="cursor-pointer px-3 py-2 text-[11px] font-semibold text-text-secondary">Fields without suggestions ({fieldGroups.optionalUnmatched.length})</summary>
-                  <div className="space-y-2 border-t border-border p-2">{fieldGroups.optionalUnmatched.map(renderField)}</div>
-                </details>}
-                {!fieldGroups.optionalSuggested.length && !fieldGroups.optionalUnmatched.length && <p className="text-[11px] text-text-secondary">No optional fields detected.</p>}
-              </section>
+              <details className="rounded-control border border-border">
+                <summary className="flex cursor-pointer list-none items-center justify-between gap-2 px-3 py-3 text-xs font-semibold">
+                  <span>Optional fields</span>
+                  <span className="text-[10px] font-normal text-text-secondary">{fieldGroups.optionalSuggested.length} suggestions · {fieldGroups.optionalUnmatched.length} without suggestions</span>
+                </summary>
+                <div className="space-y-2 border-t border-border p-2">
+                  {fieldGroups.optionalSuggested.map(renderField)}
+                  {fieldGroups.optionalUnmatched.length > 0 && <details className="rounded-control border border-border">
+                    <summary className="cursor-pointer px-3 py-2 text-[11px] font-semibold text-text-secondary">Fields without suggestions ({fieldGroups.optionalUnmatched.length})</summary>
+                    <div className="space-y-2 border-t border-border p-2">{fieldGroups.optionalUnmatched.map(renderField)}</div>
+                  </details>}
+                  {!fieldGroups.optionalSuggested.length && !fieldGroups.optionalUnmatched.length && <p className="text-[11px] text-text-secondary">No optional fields detected.</p>}
+                </div>
+              </details>
               <div className="sticky bottom-0 z-10 -mx-3 space-y-1 border-t border-border bg-card/95 px-3 pb-2 pt-3 backdrop-blur">
                 <Button className="w-full" onClick={() => void fillApproved()} disabled={filling || !Object.values(approvedFields).some(Boolean)}>{filling ? 'Filling…' : `Fill approved fields (${detectedFields.filter(field => approvedFields[field.id]).length})`}</Button>
                 <p className="text-center text-[10px] text-text-secondary">Review the page and submit manually. CareerPilot never submits forms.</p>
