@@ -57,6 +57,7 @@ export default function App() {
   const [scanning, setScanning] = useState(false);
   const [filling, setFilling] = useState(false);
   const [scannedTab, setScannedTab] = useState<{ id: number; url: string } | null>(null);
+  const [showOptionalFields, setShowOptionalFields] = useState(false);
 
   async function refreshLibrary() {
     const [docs, savedAnswers, savedSnippets] = await Promise.all([listDocuments(), listAnswers(), listSnippets()]);
@@ -224,33 +225,66 @@ export default function App() {
           <SectionHeader title="Document library" count={documents.length} />
           <Button className="mb-3 w-full" onClick={() => void detectCurrentForm()}>Detect fields on active tab</Button>
           {scanning && <p className="mb-3 text-xs text-accent" role="status">Scanning active tab…</p>}
-          {detectedFields.length > 0 && <div className="mb-4 space-y-3">
-            <div className="flex items-center justify-between"><SectionHeader title="Review field suggestions" count={detectedFields.length} /><button className="text-xs font-semibold text-accent" onClick={() => { setDetectedFields([]); setMappingSuggestions([]); setApprovedFields({}); setFillResults([]); setScannedTab(null); }}>Clear scan</button></div>
-            <p className="text-xs leading-5 text-text-secondary">Review and edit each value. Only individually approved fields are sent to the page. Existing values are preserved unless replacement is explicitly enabled.</p>
-            {detectedFields.map(field => {
+          {detectedFields.length > 0 && (() => {
+            const fieldGroups = {
+              required: detectedFields.filter(field => field.required),
+              optionalSuggested: detectedFields.filter(field => !field.required && Boolean(mappingSuggestions.find(item => item.detectedFieldId === field.id)?.proposedValue)),
+              optionalUnmatched: detectedFields.filter(field => !field.required && !mappingSuggestions.find(item => item.detectedFieldId === field.id)?.proposedValue),
+            };
+            const filledRequired = fieldGroups.required.filter(field => Boolean(field.currentValue)).length;
+            const renderField = (field: DetectedField) => {
               const suggestion = mappingSuggestions.find(item => item.detectedFieldId === field.id);
               const result = fillResults.find(item => item.fieldId === field.id);
               const value = editedValues[field.id] ?? suggestion?.selectedOption?.value ?? suggestion?.proposedValue ?? '';
               const fillable = ['text','email','tel','url','number','date','month','week','time','datetime-local','search','textarea','select'].includes(field.controlType);
-              return <div key={field.id} className="rounded-control border border-border p-3">
-                <div className="flex items-start justify-between gap-2"><div className="min-w-0"><p className="text-xs font-semibold">{field.label || field.name || field.elementId || field.controlType}</p><p className="mt-1 text-[11px] text-text-secondary">{field.controlType} · {suggestion?.status ?? 'no-match'}{suggestion ? ` · ${suggestion.confidence}%` : ''}</p></div><span className="text-[11px] font-semibold text-text-secondary">{result?.status ?? (approvedFields[field.id] ? 'Approved' : 'Review')}</span></div>
-                {!fillable && <p className="mt-1 text-[11px] text-warning">This control type needs grouped-control support and cannot be filled in this phase.</p>}
-                {suggestion?.reasons.map(reason => <p key={reason} className="mt-1 text-[11px] text-text-secondary">{reason}</p>)}
-                {suggestion?.alternatives && <p className="mt-1 text-[11px] text-warning">Multiple possible sources. Choose/edit a value manually before approval.</p>}
-                <label className="mt-2 block text-[11px] font-semibold text-text-secondary">Proposed value
-                  <textarea className={inputClass + ' min-h-16 py-2'} value={value} onChange={event => setEditedValues(current => ({ ...current, [field.id]: event.target.value }))} placeholder="No suggestion — enter a value manually" />
-                </label>
-                <p className="mt-1 break-words text-[11px] text-text-secondary">Current page value: {field.currentValue || '(empty)'}</p>
-                <div className="mt-2 flex flex-wrap items-center gap-3">
-                  <label className="flex items-center gap-1 text-[11px]"><input type="checkbox" disabled={!fillable || !value.trim()} checked={approvedFields[field.id] === true} onChange={event => setApprovedFields(current => ({ ...current, [field.id]: event.target.checked }))} /> Approve this field</label>
-                  {!!field.currentValue && <label className="flex items-center gap-1 text-[11px]"><input type="checkbox" checked={replaceFields[field.id] === true} onChange={event => setReplaceFields(current => ({ ...current, [field.id]: event.target.checked }))} /> Replace existing value</label>}
+              return <div key={field.id} className="rounded-control border border-border px-3 py-2.5">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="min-w-0"><p className="truncate text-xs font-semibold">{field.label || field.name || field.elementId || field.controlType}</p><p className="mt-0.5 text-[10px] text-text-secondary">{field.controlType} · {suggestion?.status ?? 'no-match'}{suggestion ? ` · ${suggestion.confidence}%` : ''}</p></div>
+                  <span className="shrink-0 text-[10px] font-semibold text-text-secondary">{result?.status ?? (approvedFields[field.id] ? 'Approved' : field.currentValue ? 'Has value' : 'Empty')}</span>
                 </div>
-                {result && <p className="mt-2 text-[11px] font-semibold" role="status">{result.status}: {result.message}</p>}
+                {!fillable && <p className="mt-1 text-[10px] text-warning">Grouped-control support is not available yet.</p>}
+                {suggestion?.alternatives && <p className="mt-1 text-[10px] text-warning">Multiple possible sources. Review or edit the value.</p>}
+                <label className="mt-2 block text-[10px] font-semibold text-text-secondary">Value
+                  <textarea rows={1} className={inputClass + ' h-9 min-h-9 resize-y overflow-hidden py-2'} value={value} onChange={event => setEditedValues(current => ({ ...current, [field.id]: event.target.value }))} placeholder="No suggestion — enter a value" />
+                </label>
+                {!!field.currentValue && <p className="mt-1 truncate text-[10px] text-text-secondary" title={field.currentValue}>Current value: {field.currentValue}</p>}
+                <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1">
+                  <label className="flex items-center gap-1 text-[10px]"><input type="checkbox" disabled={!fillable || !value.trim()} checked={approvedFields[field.id] === true} onChange={event => setApprovedFields(current => ({ ...current, [field.id]: event.target.checked }))} /> Approve</label>
+                  {!!field.currentValue && <label className="flex items-center gap-1 text-[10px]"><input type="checkbox" checked={replaceFields[field.id] === true} onChange={event => setReplaceFields(current => ({ ...current, [field.id]: event.target.checked }))} /> Replace existing</label>}
+                </div>
+                {result && <p className="mt-1 text-[10px] font-semibold" role="status">{result.status}: {result.message}</p>}
               </div>;
-            })}
-            <Button className="w-full" onClick={() => void fillApproved()} disabled={filling || !Object.values(approvedFields).some(Boolean)}>{filling ? 'Filling approved fields…' : 'Fill approved fields'}</Button>
-            <p className="text-[11px] leading-5 text-text-secondary">CareerPilot never submits the form. Check the page and submit it yourself.</p>
-          </div>}
+            };
+            return <div className="mb-4 space-y-3">
+              <div className="flex items-center justify-between gap-2">
+                <SectionHeader title="Review suggestions" count={detectedFields.length} />
+                <div className="flex items-center gap-3">
+                  <span className="group relative inline-flex">
+                    <button type="button" aria-label="Autofill safety information" className="flex h-6 w-6 items-center justify-center rounded-full border border-border text-xs font-semibold text-text-secondary">i</button>
+                    <span role="tooltip" className="pointer-events-none absolute right-0 top-7 z-30 hidden w-64 rounded-control border border-border bg-card p-3 text-[11px] font-normal leading-5 text-text-primary shadow-lg group-hover:block group-focus-within:block">Review and edit each value. Only individually approved fields are sent to the page. Existing values are preserved unless replacement is explicitly enabled.</span>
+                  </span>
+                  <button className="text-xs font-semibold text-accent" onClick={() => { setDetectedFields([]); setMappingSuggestions([]); setApprovedFields({}); setFillResults([]); setScannedTab(null); }}>Clear</button>
+                </div>
+              </div>
+              <section className="space-y-2">
+                <div className="flex items-center justify-between"><h3 className="text-xs font-semibold">Mandatory fields</h3><span className="text-[10px] text-text-secondary">{filledRequired} filled · {fieldGroups.required.length - filledRequired} empty</span></div>
+                {fieldGroups.required.length ? fieldGroups.required.map(renderField) : <p className="rounded-control bg-muted p-3 text-[11px] text-text-secondary">No mandatory fields detected.</p>}
+              </section>
+              <section className="space-y-2">
+                <div className="flex items-center justify-between"><h3 className="text-xs font-semibold">Optional fields</h3><span className="text-[10px] text-text-secondary">{fieldGroups.optionalSuggested.length} with suggestions</span></div>
+                {fieldGroups.optionalSuggested.map(renderField)}
+                {fieldGroups.optionalUnmatched.length > 0 && <details className="rounded-control border border-border">
+                  <summary className="cursor-pointer px-3 py-2 text-[11px] font-semibold text-text-secondary">Fields without suggestions ({fieldGroups.optionalUnmatched.length})</summary>
+                  <div className="space-y-2 border-t border-border p-2">{fieldGroups.optionalUnmatched.map(renderField)}</div>
+                </details>}
+                {!fieldGroups.optionalSuggested.length && !fieldGroups.optionalUnmatched.length && <p className="text-[11px] text-text-secondary">No optional fields detected.</p>}
+              </section>
+              <div className="sticky bottom-0 z-10 -mx-3 space-y-1 border-t border-border bg-card/95 px-3 pb-2 pt-3 backdrop-blur">
+                <Button className="w-full" onClick={() => void fillApproved()} disabled={filling || !Object.values(approvedFields).some(Boolean)}>{filling ? 'Filling…' : `Fill approved fields (${detectedFields.filter(field => approvedFields[field.id]).length})`}</Button>
+                <p className="text-center text-[10px] text-text-secondary">Review the page and submit manually. CareerPilot never submits forms.</p>
+              </div>
+            </div>;
+          })()}
           <p className="mb-3 mt-2 text-xs leading-5 text-text-secondary">Add your resume and cover letter here first. The library stores them locally; until form attachment is implemented, download a copy to upload manually. The intended application flow is resume first, then remaining fields from your profile and saved answers. Uploading a document does not change your profile. PDF, DOC or DOCX up to 5 MB.</p>
           <label className={labelClass}>Document type<select className={inputClass} value={documentType} onChange={e => setDocumentType(e.target.value as DocumentType)}><option value="resume">Resume</option><option value="cover-letter">Cover letter</option><option value="other">Other</option></select></label><label className="mt-3 block text-xs font-semibold text-text-secondary">Import document<input type="file" accept=".pdf,.doc,.docx" disabled={uploading} onChange={uploadDocument} className="mt-2 block w-full text-xs file:mr-2 file:min-h-10 file:rounded-control file:border-0 file:bg-accent file:px-3 file:text-white" /></label>
           {uploading && <p className="mt-2 text-xs text-accent" role="status">Uploading selected document…</p>}
