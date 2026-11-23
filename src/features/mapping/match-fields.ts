@@ -53,7 +53,7 @@ function candidateScore(field: DetectedField, candidate: MappingCandidate): { sc
   const normalizedTerms = candidateTerms.map(normalize).filter(Boolean);
   if (signals.some(signal => normalizedTerms.includes(normalize(signal)) && normalize(signal))) {
     score += 65; reasons.push('Exact label, alias, or saved-answer keyword match');
-  } else if (signals.some(signal => candidateTerms.some(term => includesPhrase(signal, term) || includesPhrase(term, signal)))) {
+  } else if (signals.some(signal => candidateTerms.some(term => includesPhrase(signal, term)))) {
     score += 45; reasons.push('Label or metadata contains a known field term');
   }
   const labelWords = new Set(words(field.label));
