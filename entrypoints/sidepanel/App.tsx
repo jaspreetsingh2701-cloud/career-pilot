@@ -194,19 +194,19 @@ export default function App() {
       });
       setMappingSuggestions(suggestions);
       setApprovalErrors({});
+      // A required field is pre-approved only when we have a non-empty value.
+      // Unmatched mandatory fields must be completed and approved by the user.
       setApprovedFields(
         Object.fromEntries(
-          fields
-            .filter(field => {
-              if (!field.required) return false;
-              const suggestion = suggestions.find(
-                item => item.detectedFieldId === field.id,
-              );
-              const suggestedValue =
-                suggestion?.selectedOption?.value ?? suggestion?.proposedValue ?? '';
-              return Boolean(suggestedValue.trim());
-            })
-            .map(field => [field.id, true]),
+          fields.flatMap(field => {
+            if (!field.required) return [];
+            const suggestion = suggestions.find(
+              item => item.detectedFieldId === field.id,
+            );
+            const suggestedValue =
+              suggestion?.selectedOption?.value ?? suggestion?.proposedValue ?? '';
+            return suggestedValue.trim() ? [[field.id, true]] : [];
+          }),
         ),
       );
       setStatus(fields.length ? `Detected ${fields.length} fields. Review every suggestion before filling.` : 'No supported form fields were found on this page.');
@@ -214,6 +214,26 @@ export default function App() {
     finally { setScanning(false); }
   }
   async function fillApproved() {
+    const missingRequired = detectedFields.filter(field => {
+      if (!field.required || field.currentValue.trim()) return false;
+      const suggestion = mappingSuggestions.find(
+        item => item.detectedFieldId === field.id,
+      );
+      const value =
+        editedValues[field.id] ??
+        suggestion?.selectedOption?.value ??
+        suggestion?.proposedValue ??
+        '';
+      return !value.trim();
+    });
+    if (missingRequired.length) {
+      setStatus(
+        `Required fields need values before filling: ${missingRequired
+          .map(field => field.label || field.name || field.elementId || 'Unnamed field')
+          .join(', ')}.`,
+      );
+      return;
+    }
     const missingRequiredFields = detectedFields.filter(field => {
       if (!field.required) return false;
       const suggestion = mappingSuggestions.find(
