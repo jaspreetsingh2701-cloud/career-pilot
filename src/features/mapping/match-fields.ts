@@ -63,16 +63,28 @@ function candidateScore(field: DetectedField, candidate: MappingCandidate): { sc
     ? candidate.aliases.map(normalize).filter(Boolean)
     : [...candidate.keywords, candidate.category ?? ''].map(normalize).filter(Boolean);
 
-  if (signals.some(signal => normalize(signal) === normalizedLabel && normalizedLabel)) {
-    score += candidate.kind === 'profile' && candidate.source === 'custom' ? 85 : 65;
+  const exactLabelMatch = signals.some(
+    signal => normalize(signal) === normalizedLabel && normalizedLabel,
+  );
+  const exactAliasMatch = signals.some(
+    signal => normalizedAliases.includes(normalize(signal)) && normalize(signal),
+  );
+  const customLabelPhraseMatch =
+    candidate.kind === 'profile' &&
+    candidate.source === 'custom' &&
+    signals.some(signal => includesPhrase(signal, candidate.label));
+
+  if (exactLabelMatch) {
+    score += candidate.kind === 'profile' && candidate.source === 'custom' ? 100 : 65;
     reasons.push(
       candidate.kind === 'profile' && candidate.source === 'custom'
         ? 'Exact custom profile label match'
         : 'Exact label match',
     );
-  } else if (
-    signals.some(signal => normalizedAliases.includes(normalize(signal)) && normalize(signal))
-  ) {
+  } else if (customLabelPhraseMatch) {
+    score += 80;
+    reasons.push('Custom profile label found in field metadata');
+  } else if (exactAliasMatch) {
     score += 65;
     reasons.push('Exact alias or saved-answer keyword match');
   } else if (signals.some(signal => candidateTerms.some(term => includesPhrase(signal, term)))) {
