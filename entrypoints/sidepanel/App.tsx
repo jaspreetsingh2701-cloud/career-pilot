@@ -51,6 +51,7 @@ export default function App() {
   const [detectedFields, setDetectedFields] = useState<DetectedField[]>([]);
   const [mappingSuggestions, setMappingSuggestions] = useState<MappingSuggestion[]>([]);
   const [approvedFields, setApprovedFields] = useState<Record<string, boolean>>({});
+  const [approvalErrors, setApprovalErrors] = useState<Record<string, string>>({});
   const [editedValues, setEditedValues] = useState<Record<string, string>>({});
   const [replaceFields, setReplaceFields] = useState<Record<string, boolean>>({});
   const [fillResults, setFillResults] = useState<FillResult[]>([]);
@@ -168,7 +169,7 @@ export default function App() {
     catch (error) { setStatus(error instanceof Error ? error.message : 'Could not save website access rules.'); }
   }
   async function detectCurrentForm() {
-    setScanning(true); setFillResults([]); setApprovedFields({}); setEditedValues({}); setReplaceFields({}); setScannedTab(null);
+    setScanning(true); setFillResults([]); setApprovedFields({}); setApprovalErrors({}); setEditedValues({}); setReplaceFields({}); setScannedTab(null);
     const [activeTab] = await chrome.tabs.query({ active: true, currentWindow: true });
     if (!activeTab?.id || !activeTab.url) { setStatus('The active tab URL is unavailable.'); setScanning(false); return; }
     const decision = evaluateWebsiteAccess(activeTab.url, accessRules);
@@ -192,10 +193,19 @@ export default function App() {
         savedAnswers: answers,
       });
       setMappingSuggestions(suggestions);
+      setApprovalErrors({});
       setApprovedFields(
         Object.fromEntries(
           fields
-            .filter(field => field.required)
+            .filter(field => {
+              if (!field.required) return false;
+              const suggestion = suggestions.find(
+                item => item.detectedFieldId === field.id,
+              );
+              const suggestedValue =
+                suggestion?.selectedOption?.value ?? suggestion?.proposedValue ?? '';
+              return Boolean(suggestedValue.trim());
+            })
             .map(field => [field.id, true]),
         ),
       );
@@ -204,6 +214,35 @@ export default function App() {
     finally { setScanning(false); }
   }
   async function fillApproved() {
+    const missingRequiredFields = detectedFields.filter(field => {
+      if (!field.required) return false;
+      const suggestion = mappingSuggestions.find(
+        item => item.detectedFieldId === field.id,
+      );
+      const value =
+        editedValues[field.id] ??
+        suggestion?.selectedOption?.value ??
+        suggestion?.proposedValue ??
+        '';
+      return !value.trim();
+    });
+
+    if (missingRequiredFields.length) {
+      const errors = Object.fromEntries(
+        missingRequiredFields.map(field => [
+          field.id,
+          'This mandatory field needs a value before you can continue.',
+        ]),
+      );
+      setApprovalErrors(current => ({ ...current, ...errors }));
+      setStatus(
+        `Add values for the following mandatory fields: ${missingRequiredFields
+          .map(field => field.label || field.name || 'Unnamed field')
+          .join(', ')}.`,
+      );
+      return;
+    }
+
     const selected = detectedFields.filter(field => approvedFields[field.id]);
     if (!selected.length) { setStatus('Approve at least one field before filling.'); return; }
     setFilling(true); setFillResults([]);
@@ -376,7 +415,31 @@ export default function App() {
                 {!fillable && <p className="mt-1 text-[10px] text-warning">Grouped-control support is not available yet.</p>}
                 {suggestion?.alternatives && <p className="mt-1 text-[10px] text-warning">Multiple possible sources. Review or edit the value.</p>}
                 <label className="mt-2 block text-[10px] font-semibold text-text-secondary">Value
-                  <textarea rows={1} className={inputClass + ' h-9 min-h-9 resize-y overflow-hidden py-2'} value={value} onChange={event => setEditedValues(current => ({ ...current, [field.id]: event.target.value }))} placeholder="No suggestion — enter a value" />
+                  <textarea
+                    rows={1}
+                    className={inputClass + ' h-9 min-h-9 resize-y overflow-hidden py-2'}
+                    value={value}
+                    aria-invalid={Boolean(approvalErrors[field.id])}
+                    onChange={event => {
+                      setEditedValues(current => ({
+                        ...current,
+                        [field.id]: event.target.value,
+                      }));
+                      if (event.target.value.trim()) {
+                        setApprovalErrors(current => {
+                          const next = { ...current };
+                          delete next[field.id];
+                          return next;
+                        });
+                      }
+                    }}
+                    placeholder="No suggestion — enter a value"
+                  />
+                  {approvalErrors[field.id] && (
+                    <p className="mt-1 text-[10px] text-danger" role="alert">
+                      {approvalErrors[field.id]}
+                    </p>
+                  )}
                 </label>
                 {!!field.currentValue && <p className="mt-1 truncate text-[10px] text-text-secondary" title={field.currentValue}>Current value: {field.currentValue}</p>}
                 <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1">
@@ -384,12 +447,27 @@ export default function App() {
                     type="button"
                     disabled={!fillable}
                     aria-pressed={approved}
-                    onClick={() =>
+                    onClick={() => {
+                      if (!approved && !value.trim()) {
+                        setApprovalErrors(current => ({
+                          ...current,
+                          [field.id]: field.required
+                            ? 'Enter a value for this mandatory field before approving it.'
+                            : 'Enter a value before approving this field.',
+                        }));
+                        return;
+                      }
+
+                      setApprovalErrors(current => {
+                        const next = { ...current };
+                        delete next[field.id];
+                        return next;
+                      });
                       setApprovedFields(current => ({
                         ...current,
                         [field.id]: !current[field.id],
-                      }))
-                    }
+                      }));
+                    }}
                     className={`rounded-control border px-3 py-1.5 text-[10px] font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${approved ? 'border-accent bg-accent text-white' : 'border-border bg-card text-text-secondary'}`}
                   >
                     {approved ? 'Approved' : 'Approve'}
