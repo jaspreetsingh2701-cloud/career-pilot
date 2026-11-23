@@ -3,7 +3,7 @@ import type { ProfileCandidateValue } from '../profile/utils/profile-field-mappe
 import type { SavedAnswer } from '../library/types';
 
 export type MappingCandidate =
-  | { kind: 'profile'; key: string; label: string; value: string; aliases: string[]; section?: string }
+  | { kind: 'profile'; key: string; label: string; value: string; aliases: string[]; source: 'standard' | 'custom'; section?: string }
   | { kind: 'saved-answer'; id: string; label: string; value: string; keywords: string[]; category?: string };
 
 export interface MappingSuggestion {
@@ -34,7 +34,15 @@ const includesPhrase = (haystack: string, needle: string): boolean => {
 };
 
 function profileCandidates(values: ProfileCandidateValue[]): MappingCandidate[] {
-  return values.map(value => ({ kind: 'profile', key: value.key, label: value.label, value: value.value, aliases: value.aliases, section: value.section }));
+  return values.map(value => ({
+    kind: 'profile',
+    key: value.key,
+    label: value.label,
+    value: value.value,
+    aliases: value.aliases,
+    source: value.source,
+    section: value.section,
+  }));
 }
 function answerCandidates(values: SavedAnswer[]): MappingCandidate[] {
   return values.filter(value => value.answer.trim()).map(value => ({
@@ -50,11 +58,26 @@ function candidateScore(field: DetectedField, candidate: MappingCandidate): { sc
     : [candidate.label, ...candidate.keywords, candidate.category ?? ''];
   let score = 0;
   const reasons: string[] = [];
-  const normalizedTerms = candidateTerms.map(normalize).filter(Boolean);
-  if (signals.some(signal => normalizedTerms.includes(normalize(signal)) && normalize(signal))) {
-    score += 65; reasons.push('Exact label, alias, or saved-answer keyword match');
+  const normalizedLabel = normalize(candidate.label);
+  const normalizedAliases = candidate.kind === 'profile'
+    ? candidate.aliases.map(normalize).filter(Boolean)
+    : [...candidate.keywords, candidate.category ?? ''].map(normalize).filter(Boolean);
+
+  if (signals.some(signal => normalize(signal) === normalizedLabel && normalizedLabel)) {
+    score += candidate.kind === 'profile' && candidate.source === 'custom' ? 85 : 65;
+    reasons.push(
+      candidate.kind === 'profile' && candidate.source === 'custom'
+        ? 'Exact custom profile label match'
+        : 'Exact label match',
+    );
+  } else if (
+    signals.some(signal => normalizedAliases.includes(normalize(signal)) && normalize(signal))
+  ) {
+    score += 65;
+    reasons.push('Exact alias or saved-answer keyword match');
   } else if (signals.some(signal => candidateTerms.some(term => includesPhrase(signal, term)))) {
-    score += 45; reasons.push('Label or metadata contains a known field term');
+    score += 45;
+    reasons.push('Label or metadata contains a known field term');
   }
   const labelWords = new Set(words(field.label));
   const overlap = candidateTerms.some(term => words(term).filter(word => labelWords.has(word)).length >= 2);
@@ -81,13 +104,13 @@ export function suggestFieldMappings(input: MappingInput): MappingSuggestion[] {
   const candidates = [...profileCandidates(input.profileValues), ...answerCandidates(input.savedAnswers)];
   return input.fields.map(field => {
     if (field.disabled || field.readOnly || field.hidden) {
-      return { detectedFieldId: field.id, candidate: { kind: 'profile', key: '', label: '', value: '', aliases: [] }, proposedValue: '', confidence: 0, reasons: ['Field is not editable'], status: 'no-match' };
+      return { detectedFieldId: field.id, candidate: { kind: 'profile', key: '', label: '', value: '', aliases: [], source: 'standard' }, proposedValue: '', confidence: 0, reasons: ['Field is not editable'], status: 'no-match' };
     }
     const ranked = candidates.map(candidate => ({ candidate, ...candidateScore(field, candidate) }))
       .filter(item => item.score > 0)
       .sort((a, b) => b.score - a.score);
     if (!ranked.length || ranked[0].score < 45) {
-      return { detectedFieldId: field.id, candidate: { kind: 'profile', key: '', label: '', value: '', aliases: [] }, proposedValue: '', confidence: 0, reasons: ['No sufficiently strong metadata match'], status: 'no-match' };
+      return { detectedFieldId: field.id, candidate: { kind: 'profile', key: '', label: '', value: '', aliases: [], source: 'standard' }, proposedValue: '', confidence: 0, reasons: ['No sufficiently strong metadata match'], status: 'no-match' };
     }
     const top = ranked[0];
     const tied = ranked.filter(item => top.score - item.score < 15);

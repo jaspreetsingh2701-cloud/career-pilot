@@ -108,12 +108,53 @@ export default function App() {
     try { await writePlainText(value, navigator.clipboard); setClipboardFallback(''); setStatus(`${label} copied to clipboard.`); }
     catch { setClipboardFallback(value); setStatus('Clipboard access was blocked. Click the text below to select it, then copy manually.'); }
   }
-  function addCustomField() {
-    if (!customLabel.trim() || !customValue.trim()) { setStatus('Add a label and value for the custom field.'); return; }
-    const existing = (profile.customFields ?? []).find(field => field.id === customEditingId);
-    const field = { id: existing?.id ?? newId(), key: existing?.key ?? `custom_${newId().replace(/-/g, '')}`, label: customLabel.trim(), value: customValue, type: customType, section: customSection.trim() || 'Additional', aliases: customAliases.split(',').map(value => value.trim()).filter(Boolean) };
-    setProfile(current => ({ ...current, customFields: existing ? (current.customFields ?? []).map(item => item.id === existing.id ? field : item) : [...(current.customFields ?? []), field] }));
-    setDirty(true); setCustomEditingId(null); setCustomLabel(''); setCustomValue(''); setCustomAliases(''); setStatus(existing ? 'Custom field updated. Save your profile to keep it.' : 'Custom field added. Save your profile to keep it.');
+  async function addCustomField() {
+    if (!customLabel.trim() || !customValue.trim()) {
+      setStatus('Add a label and value for the custom field.');
+      return;
+    }
+
+    const existing = (profile.customFields ?? []).find(
+      field => field.id === customEditingId,
+    );
+    const customField = {
+      id: existing?.id ?? newId(),
+      key: existing?.key ?? `custom_${newId().replace(/-/g, '')}`,
+      label: customLabel.trim(),
+      value: customValue.trim(),
+      type: customType,
+      section: customSection.trim() || 'Additional',
+      aliases: customAliases
+        .split(',')
+        .map(alias => alias.trim())
+        .filter(Boolean),
+    };
+    const customFields = existing
+      ? (profile.customFields ?? []).map(field =>
+          field.id === existing.id ? customField : field,
+        )
+      : [...(profile.customFields ?? []), customField];
+    const nextProfile = { ...profile, customFields };
+
+    setBusy(true);
+    try {
+      const savedProfile = await saveProfile(nextProfile);
+      setProfile(savedProfile);
+      setDirty(false);
+      setCustomEditingId(null);
+      setCustomLabel('');
+      setCustomValue('');
+      setCustomAliases('');
+      setStatus(existing ? 'Custom field updated and saved.' : 'Custom field added and saved.');
+    } catch (error) {
+      setStatus(
+        error instanceof Error
+          ? `Custom field could not be saved: ${error.message}`
+          : 'Custom field could not be saved. Please try again.',
+      );
+    } finally {
+      setBusy(false);
+    }
   }
   async function addMessageSnippet() {
     if (!snippetTitle.trim() || !snippetBody.trim()) return;
@@ -137,10 +178,27 @@ export default function App() {
       const response = await chrome.tabs.sendMessage(activeTab.id, { type: 'DETECT_FORM_FIELDS' });
       if (!response?.ok) { setStatus(response?.error ?? 'Could not inspect this page.'); return; }
       const fields = response.fields as DetectedField[];
+      const latestProfile = await getProfile();
+
       setScannedTab({ id: activeTab.id, url: activeTab.url });
       setDetectedFields(fields);
-      const suggestions = suggestFieldMappings({ fields, profileValues: getProfileCandidateValues(profile), savedAnswers: answers });
+
+      // Read the persisted profile at scan time so recently saved custom fields
+      // are always included in the mapping candidates.
+      setProfile(latestProfile);
+      const suggestions = suggestFieldMappings({
+        fields,
+        profileValues: getProfileCandidateValues(latestProfile),
+        savedAnswers: answers,
+      });
       setMappingSuggestions(suggestions);
+      setApprovedFields(
+        Object.fromEntries(
+          fields
+            .filter(field => field.required)
+            .map(field => [field.id, true]),
+        ),
+      );
       setStatus(fields.length ? `Detected ${fields.length} fields. Review every suggestion before filling.` : 'No supported form fields were found on this page.');
     } catch (error) { setStatus(error instanceof Error ? 'Detection unavailable: ' + error.message : 'Detection is unavailable on this page.'); }
     finally { setScanning(false); }
@@ -216,7 +274,26 @@ export default function App() {
             <label className={`${labelClass} mt-3`}>Section<input className={inputClass} value={customSection} onChange={e => setCustomSection(e.target.value)} /></label>
             <Button className="mt-3 w-full" variant="secondary" onClick={addCustomField}>{customEditingId ? 'Update custom field' : 'Add custom field'}</Button>
             {customEditingId && <button className="mt-2 text-xs font-semibold text-text-secondary" onClick={() => { setCustomEditingId(null); setCustomLabel(''); setCustomValue(''); setCustomAliases(''); }}>Cancel editing</button>}
-            <div className="mt-3 space-y-2">{(profile.customFields ?? []).map(field => <div key={field.id} className="rounded-control border border-border p-3"><p className="text-xs font-semibold">{field.label}</p><p className="mt-1 whitespace-pre-wrap text-xs text-text-secondary">{field.value}</p><p className="mt-1 text-[11px] text-text-secondary">{field.section} · {field.aliases.join(', ') || 'No aliases'}</p><div className="mt-2 flex gap-3"><button className="text-xs font-semibold text-accent" onClick={() => { setCustomEditingId(field.id); setCustomLabel(field.label); setCustomValue(field.value); setCustomType(field.type); setCustomAliases(field.aliases.join(', ')); setCustomSection(field.section ?? 'Additional'); }}>Edit</button><button className="text-xs font-semibold text-danger" onClick={() => { setProfile(current => ({ ...current, customFields: (current.customFields ?? []).filter(item => item.id !== field.id) })); setDirty(true); }}>Remove</button></div></div>)}</div>
+            <div className="mt-3 space-y-2">{(profile.customFields ?? []).map(field => <div key={field.id} className="rounded-control border border-border p-3"><p className="text-xs font-semibold">{field.label}</p><p className="mt-1 whitespace-pre-wrap text-xs text-text-secondary">{field.value}</p><p className="mt-1 text-[11px] text-text-secondary">{field.section} · {field.aliases.join(', ') || 'No aliases'}</p><div className="mt-2 flex gap-3"><button className="text-xs font-semibold text-accent" onClick={() => { setCustomEditingId(field.id); setCustomLabel(field.label); setCustomValue(field.value); setCustomType(field.type); setCustomAliases(field.aliases.join(', ')); setCustomSection(field.section ?? 'Additional'); }}>Edit</button><button className="text-xs font-semibold text-danger" onClick={async () => {
+                  const nextProfile = {
+                    ...profile,
+                    customFields: (profile.customFields ?? []).filter(
+                      item => item.id !== field.id,
+                    ),
+                  };
+                  try {
+                    const savedProfile = await saveProfile(nextProfile);
+                    setProfile(savedProfile);
+                    setDirty(false);
+                    setStatus('Custom field removed.');
+                  } catch (error) {
+                    setStatus(
+                      error instanceof Error
+                        ? `Could not remove custom field: ${error.message}`
+                        : 'Could not remove custom field.',
+                    );
+                  }
+                }}>Remove</button></div></div>)}</div>
           </div>
         </div>}
 
@@ -235,7 +312,11 @@ export default function App() {
               const result = fillResults.find(item => item.fieldId === field.id);
               const value = editedValues[field.id] ?? suggestion?.selectedOption?.value ?? suggestion?.proposedValue ?? '';
               const fillable = ['text','email','tel','url','number','date','month','week','time','datetime-local','search','textarea','select'].includes(field.controlType);
-              return <div key={field.id} className="rounded-control border border-border px-3 py-2.5">
+              const approved = approvedFields[field.id] === true;
+              return <div
+                key={field.id}
+                className={`rounded-control border px-3 py-2.5 transition-colors ${approved ? 'border-accent bg-accent/5' : 'border-border'}`}
+              >
                 <div className="flex items-center justify-between gap-2">
                   <div className="min-w-0"><p className="truncate text-xs font-semibold">{field.label || field.name || field.elementId || field.controlType}</p><p className="mt-0.5 text-[10px] text-text-secondary">{field.controlType} · {suggestion?.status ?? 'no-match'}{suggestion ? ` · ${suggestion.confidence}%` : ''}</p></div>
                   <span className="shrink-0 text-[10px] font-semibold text-text-secondary">{result?.status ?? (approvedFields[field.id] ? 'Approved' : field.currentValue ? 'Has value' : 'Empty')}</span>
@@ -247,7 +328,20 @@ export default function App() {
                 </label>
                 {!!field.currentValue && <p className="mt-1 truncate text-[10px] text-text-secondary" title={field.currentValue}>Current value: {field.currentValue}</p>}
                 <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1">
-                  <label className="flex items-center gap-1 text-[10px]"><input type="checkbox" disabled={!fillable || !value.trim()} checked={approvedFields[field.id] === true} onChange={event => setApprovedFields(current => ({ ...current, [field.id]: event.target.checked }))} /> Approve</label>
+                  <button
+                    type="button"
+                    disabled={!fillable}
+                    aria-pressed={approved}
+                    onClick={() =>
+                      setApprovedFields(current => ({
+                        ...current,
+                        [field.id]: !current[field.id],
+                      }))
+                    }
+                    className={`rounded-control border px-3 py-1.5 text-[10px] font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${approved ? 'border-accent bg-accent text-white' : 'border-border bg-card text-text-secondary'}`}
+                  >
+                    {approved ? 'Approved' : 'Approve'}
+                  </button>
                   {!!field.currentValue && <label className="flex items-center gap-1 text-[10px]"><input type="checkbox" checked={replaceFields[field.id] === true} onChange={event => setReplaceFields(current => ({ ...current, [field.id]: event.target.checked }))} /> Replace existing</label>}
                 </div>
                 {result && <p className="mt-1 text-[10px] font-semibold" role="status">{result.status}: {result.message}</p>}
