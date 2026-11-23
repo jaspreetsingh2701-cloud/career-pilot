@@ -33,7 +33,8 @@ describe('suggestFieldMappings', () => {
 
   it('does not map a plain Address field to the Email profile value', () => {
     const [result] = suggestFieldMappings({ fields: [field({ label: 'Address', name: 'address' })], profileValues: profile, savedAnswers: [] });
-    expect(result.candidate.key).not.toBe('email');
+    expect(result.candidate.kind).toBe('profile');
+    if (result.candidate.kind === 'profile') expect(result.candidate.key).not.toBe('email');
     expect(result.status).toBe('no-match');
   });
 
