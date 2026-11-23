@@ -192,11 +192,20 @@ export default function App() {
         savedAnswers: answers,
       });
       setMappingSuggestions(suggestions);
+      // Only pre-approve mandatory fields when we have a real, non-empty
+      // suggestion. Empty or unmatched required fields must remain unapproved.
       setApprovedFields(
         Object.fromEntries(
-          fields
-            .filter(field => field.required)
-            .map(field => [field.id, true]),
+          fields.flatMap(field => {
+            const suggestion = suggestions.find(
+              item => item.detectedFieldId === field.id,
+            );
+            const suggestedValue =
+              suggestion?.selectedOption?.value ?? suggestion?.proposedValue ?? '';
+            return field.required && suggestedValue.trim()
+              ? [[field.id, true]]
+              : [];
+          }),
         ),
       );
       setStatus(fields.length ? `Detected ${fields.length} fields. Review every suggestion before filling.` : 'No supported form fields were found on this page.');
@@ -204,8 +213,28 @@ export default function App() {
     finally { setScanning(false); }
   }
   async function fillApproved() {
+    const missingRequired = detectedFields.filter(field => {
+      if (!field.required || field.currentValue.trim()) return false;
+      const suggestion = mappingSuggestions.find(
+        item => item.detectedFieldId === field.id,
+      );
+      const value =
+        editedValues[field.id] ??
+        suggestion?.selectedOption?.value ??
+        suggestion?.proposedValue ??
+        '';
+      return !value.trim();
+    });
+    if (missingRequired.length) {
+      setStatus(
+        `Required fields need values before filling: ${missingRequired
+          .map(field => field.label || field.name || field.elementId || 'Unnamed field')
+          .join(', ')}.`,
+      );
+      return;
+    }
     const selected = detectedFields.filter(field => approvedFields[field.id]);
-    if (!selected.length) { setStatus('Approve at least one field before filling.'); return; }
+    if (!selected.length) { setStatus('Approve at least one field with a value before filling.'); return; }
     setFilling(true); setFillResults([]);
     try {
       const [activeTab] = await chrome.tabs.query({ active: true, currentWindow: true });
@@ -375,6 +404,8 @@ export default function App() {
                 </div>
                 {!fillable && <p className="mt-1 text-[10px] text-warning">Grouped-control support is not available yet.</p>}
                 {suggestion?.alternatives && <p className="mt-1 text-[10px] text-warning">Multiple possible sources. Review or edit the value.</p>}
+                {suggestion?.reasons?.length ? <p className="mt-1 text-[10px] text-text-secondary">Match: {suggestion.reasons.join('; ')}</p> : null}
+                <p className="mt-1 text-[10px] text-text-secondary">Detected as: {[field.label && `label “${field.label}”`, field.name && `name “${field.name}”`, field.placeholder && `placeholder “${field.placeholder}”`, field.elementId && `id “${field.elementId}”`].filter(Boolean).join(' · ') || 'No identifying label or metadata'}</p>
                 <label className="mt-2 block text-[10px] font-semibold text-text-secondary">Value
                   <textarea rows={1} className={inputClass + ' h-9 min-h-9 resize-y overflow-hidden py-2'} value={value} onChange={event => setEditedValues(current => ({ ...current, [field.id]: event.target.value }))} placeholder="No suggestion — enter a value" />
                 </label>
@@ -382,7 +413,7 @@ export default function App() {
                 <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1">
                   <button
                     type="button"
-                    disabled={!fillable}
+                    disabled={!fillable || !value.trim()}
                     aria-pressed={approved}
                     onClick={() =>
                       setApprovedFields(current => ({
@@ -394,6 +425,7 @@ export default function App() {
                   >
                     {approved ? 'Approved' : 'Approve'}
                   </button>
+                  {!value.trim() && <span className="text-[10px] text-warning">Enter a value before approving.</span>}
                   {!!field.currentValue && <label className="flex items-center gap-1 text-[10px]"><input type="checkbox" checked={replaceFields[field.id] === true} onChange={event => setReplaceFields(current => ({ ...current, [field.id]: event.target.checked }))} /> Replace existing</label>}
                 </div>
                 {result && <p className="mt-1 text-[10px] font-semibold" role="status">{result.status}: {result.message}</p>}
