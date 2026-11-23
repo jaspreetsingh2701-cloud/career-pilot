@@ -50,11 +50,22 @@ function candidateScore(field: DetectedField, candidate: MappingCandidate): { sc
     : [candidate.label, ...candidate.keywords, candidate.category ?? ''];
   let score = 0;
   const reasons: string[] = [];
-  const normalizedTerms = candidateTerms.map(normalize).filter(Boolean);
-  if (signals.some(signal => normalizedTerms.includes(normalize(signal)) && normalize(signal))) {
-    score += 65; reasons.push('Exact label, alias, or saved-answer keyword match');
+  const normalizedLabel = normalize(candidate.label);
+  const normalizedAliases = candidate.kind === 'profile'
+    ? candidate.aliases.map(normalize).filter(Boolean)
+    : [...candidate.keywords, candidate.category ?? ''].map(normalize).filter(Boolean);
+
+  if (signals.some(signal => normalize(signal) === normalizedLabel && normalizedLabel)) {
+    score += 85;
+    reasons.push('Exact profile label match');
+  } else if (
+    signals.some(signal => normalizedAliases.includes(normalize(signal)) && normalize(signal))
+  ) {
+    score += 65;
+    reasons.push('Exact alias or saved-answer keyword match');
   } else if (signals.some(signal => candidateTerms.some(term => includesPhrase(signal, term)))) {
-    score += 45; reasons.push('Label or metadata contains a known field term');
+    score += 45;
+    reasons.push('Label or metadata contains a known field term');
   }
   const labelWords = new Set(words(field.label));
   const overlap = candidateTerms.some(term => words(term).filter(word => labelWords.has(word)).length >= 2);
