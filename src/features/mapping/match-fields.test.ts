@@ -31,6 +31,19 @@ describe('suggestFieldMappings', () => {
     expect(result.candidate).toMatchObject({ kind: 'profile', key: 'currentDesignation' });
   });
 
+  it('does not map a plain Address field to the Email profile value', () => {
+    const [result] = suggestFieldMappings({ fields: [field({ label: 'Address', name: 'address' })], profileValues: profile, savedAnswers: [] });
+    expect(result.candidate.kind).toBe('profile');
+    if (result.candidate.kind === 'profile') expect(result.candidate.key).not.toBe('email');
+    expect(result.status).toBe('no-match');
+  });
+
+  it('still maps Email address to the Email profile value', () => {
+    const [result] = suggestFieldMappings({ fields: [field({ label: 'Email address', name: 'email' })], profileValues: profile, savedAnswers: [] });
+    expect(result.candidate).toMatchObject({ kind: 'profile', key: 'email' });
+    expect(result.proposedValue).toBe('asha@example.com');
+  });
+
   it('matches saved answers using question title and keywords', () => {
     const [result] = suggestFieldMappings({ fields: [field({ tagName: 'textarea', controlType: 'textarea', label: 'Why are you interested in this role?' })], profileValues: [], savedAnswers: answers });
     expect(result.candidate).toMatchObject({ kind: 'saved-answer', id: 'answer-1' });
