@@ -3,7 +3,7 @@ import type { ProfileCandidateValue } from '../profile/utils/profile-field-mappe
 import type { SavedAnswer } from '../library/types';
 
 export type MappingCandidate =
-  | { kind: 'profile'; key: string; label: string; value: string; aliases: string[]; section?: string }
+  | { kind: 'profile'; key: string; label: string; value: string; aliases: string[]; source: 'standard' | 'custom'; section?: string }
   | { kind: 'saved-answer'; id: string; label: string; value: string; keywords: string[]; category?: string };
 
 export interface MappingSuggestion {
@@ -34,7 +34,15 @@ const includesPhrase = (haystack: string, needle: string): boolean => {
 };
 
 function profileCandidates(values: ProfileCandidateValue[]): MappingCandidate[] {
-  return values.map(value => ({ kind: 'profile', key: value.key, label: value.label, value: value.value, aliases: value.aliases, section: value.section }));
+  return values.map(value => ({
+    kind: 'profile',
+    key: value.key,
+    label: value.label,
+    value: value.value,
+    aliases: value.aliases,
+    source: value.source,
+    section: value.section,
+  }));
 }
 function answerCandidates(values: SavedAnswer[]): MappingCandidate[] {
   return values.filter(value => value.answer.trim()).map(value => ({
@@ -56,8 +64,12 @@ function candidateScore(field: DetectedField, candidate: MappingCandidate): { sc
     : [...candidate.keywords, candidate.category ?? ''].map(normalize).filter(Boolean);
 
   if (signals.some(signal => normalize(signal) === normalizedLabel && normalizedLabel)) {
-    score += 85;
-    reasons.push('Exact profile label match');
+    score += candidate.kind === 'profile' && candidate.source === 'custom' ? 85 : 65;
+    reasons.push(
+      candidate.kind === 'profile' && candidate.source === 'custom'
+        ? 'Exact custom profile label match'
+        : 'Exact label match',
+    );
   } else if (
     signals.some(signal => normalizedAliases.includes(normalize(signal)) && normalize(signal))
   ) {
